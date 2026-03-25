@@ -487,24 +487,42 @@ function QuizPlay({courseId,chid,prog,upd,nav}){
   </div>);
 }
 
+// ━━━ PUSH NOTIFICATIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const requestPushPermission=async()=>{
+  if(!("Notification" in window))return;
+  if(Notification.permission==="default"){await Notification.requestPermission()}
+};
+const sendPushNotif=(title,body,icon="🏁")=>{
+  if(!("Notification" in window)||Notification.permission!=="granted")return;
+  try{new Notification(title,{body,icon:"/favicon.ico",badge:"/favicon.ico",tag:"acc-match"})}catch(e){console.log("Notif failed",e)}
+};
+
 // ━━━ PLAY (matchmaking) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function PlayScreen({uid,name}){
   const[avail,setAvail]=useState(false);const[players,setPlayers]=useState([]);const[match,setMatch]=useState(null);const[loading,setLoading]=useState(true);
+  const prevMatch=React.useRef(null);
 
   const refresh=async()=>{
     const my=await sbGetMyMatch(uid);
     if(my&&my.matched_with){
       const partner=await sb.from("matchmaking").select("display_name").eq("id",my.matched_with).single();
-      setMatch({myName:name,partnerName:partner?.data?.display_name||"Driver",partnerId:my.matched_with});
+      const partnerName=partner?.data?.display_name||"Driver";
+      // Send push notif when match is NEW (someone matched with us)
+      if(!prevMatch.current&&my.matched_with){
+        sendPushNotif("🤝 Match Found!",`${partnerName} wants to drive with you! Join Server 1 XCL`);
+      }
+      prevMatch.current=my.matched_with;
+      setMatch({myName:name,partnerName,partnerId:my.matched_with});
       setAvail(false);
     }else{
+      prevMatch.current=null;
       setAvail(my?.available||false);
       if(my?.available){const p=await sbGetAvailable(uid);setPlayers(p)}
       setMatch(null);
     }
     setLoading(false);
   };
-  useEffect(()=>{refresh();const iv=setInterval(refresh,5000);return()=>clearInterval(iv)},[]);
+  useEffect(()=>{requestPushPermission();refresh();const iv=setInterval(refresh,5000);return()=>clearInterval(iv)},[]);
 
   const toggleAvail=async()=>{
     if(avail){await sbSetAvailable(uid,name,false);setAvail(false);setPlayers([])}
@@ -513,6 +531,9 @@ function PlayScreen({uid,name}){
 
   const doMatch=async(theirId,theirName)=>{
     await sbMatchWith(uid,theirId);
+    sendPushNotif("🤝 You're Connected!",`You and ${theirName} are matched! Join Server 1 XCL`);
+    // Trigger email notification via Edge Function
+    try{await fetch(SUPABASE_URL+"/functions/v1/match-notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON},body:JSON.stringify({matcherId:uid,matcherName:name,matchedId:theirId,matchedName:theirName})})}catch(e){}
     setMatch({myName:name,partnerName:theirName,partnerId:theirId});
     setAvail(false);
   };
