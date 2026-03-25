@@ -218,6 +218,10 @@ const loadData = () => {
 const saveData = (data) => {
   try { localStorage.setItem(DATA_KEY, JSON.stringify(data)); return true; } catch { return false; }
 };
+// Supabase content sync
+const sbLoadContent=async(key)=>{try{const{data}=await sb.from("app_content").select("data").eq("key",key).single();return data?.data||null}catch(e){return null}};
+const sbSaveContent=async(key,data)=>{await sb.from("app_content").upsert({key,data,updated_at:new Date().toISOString()})};
+
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
 // ─── TOAST ────────────────────────────────────────────────────
@@ -240,18 +244,34 @@ function AdminApp() {
 
   const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
 
-  const save = useCallback(() => {
-    if (saveData(courses)) {
-      showToast("Modifications enregistrées !");
+  const save = useCallback(async () => {
+    // Save to localStorage (instant)
+    saveData(courses);
+    // Save to Supabase (propagates to all users)
+    try {
+      await sbSaveContent("courses", courses);
+      // Also save settings
+      const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
+      await sbSaveContent("settings", settings);
+      showToast("Sauvegardé et synchronisé pour tous les utilisateurs !");
       setHasChanges(false);
-    } else {
-      showToast("Erreur de sauvegarde", "error");
+    } catch(e) {
+      showToast("Erreur de synchronisation Supabase", "error");
     }
   }, [courses]);
 
+  // Load latest from Supabase on admin login
   useEffect(() => {
     sb.auth.getSession().then(({data:{session}})=>{setAuthUser(session?.user||null)});
-    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setAuthUser(session?.user||null)});
+    const{data:{subscription}}=sb.auth.onAuthStateChange(async(_,session)=>{
+      setAuthUser(session?.user||null);
+      if(session?.user){
+        const remoteCourses=await sbLoadContent("courses");
+        if(remoteCourses){setCourses(remoteCourses);saveData(remoteCourses)}
+        const remoteSettings=await sbLoadContent("settings");
+        if(remoteSettings){localStorage.setItem("acc-coaching-settings",JSON.stringify(remoteSettings))}
+      }
+    });
     return()=>subscription.unsubscribe();
   }, []);
 
@@ -827,6 +847,11 @@ function CoachingEditor({ showToast }) {
   const [settings, setSettings] = useState(loadS);
   const c = settings.coaching || {title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
+  const saveCoaching=async()=>{
+    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+    await sbSaveContent("settings",s);
+    showToast("Page coaching sauvegardée et synchronisée !");
+  };
 
   return(<div>
     <div className="card"><div className="card-header"><div className="card-title">📝 Textes de la page</div></div><div className="card-body">
@@ -847,7 +872,7 @@ function CoachingEditor({ showToast }) {
       <div className="form-group"><label className="form-label">URL de réservation</label><input className="form-input" value={c.bookUrl||""} onChange={e=>upd(d=>{d.bookUrl=e.target.value})}/></div>
       <div className="form-group"><label className="form-label">Texte du bouton</label><input className="form-input" value={c.bookLabel||""} onChange={e=>upd(d=>{d.bookLabel=e.target.value})}/></div>
     </div></div>
-    <button className="btn btn-primary" style={{marginTop:16}} onClick={()=>showToast("Page coaching sauvegardée ! (Rechargez l'app pour voir)")}>💾 Confirmer les changements</button>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveCoaching}>💾 Sauvegarder et synchroniser</button>
   </div>);
 }
 
@@ -857,6 +882,11 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const [settings, setSettings] = useState(loadS);
   const layout = settings.homeLayout || ["nextLesson","courses"];
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
+  const saveLayout=async()=>{
+    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+    await sbSaveContent("settings",s);
+    showToast("Layout sauvegardé et synchronisé !");
+  };
 
   const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
 
@@ -888,7 +918,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
         </div>
       ))}
     </div></div>
-    <button className="btn btn-primary" style={{marginTop:16}} onClick={()=>showToast("Layout sauvegardé ! (Rechargez l'app pour voir)")}>💾 Confirmer</button>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveLayout}>💾 Sauvegarder et synchroniser</button>
   </div>);
 }
 
