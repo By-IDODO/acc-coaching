@@ -305,6 +305,12 @@ function AdminApp() {
             <button className={`nav-item ${selected.type==="users"?"active":""}`} onClick={()=>nav({type:"users"})}>
               <span className="nav-icon">👥</span> Utilisateurs
             </button>
+            <button className={`nav-item ${selected.type==="coaching"?"active":""}`} onClick={()=>nav({type:"coaching"})}>
+              <span className="nav-icon">🎯</span> Page Coaching
+            </button>
+            <button className={`nav-item ${selected.type==="homeLayout"?"active":""}`} onClick={()=>nav({type:"homeLayout"})}>
+              <span className="nav-icon">🏠</span> Layout Accueil
+            </button>
           </div>
           {courses.map((course, ci) => (
             <div key={course.id} className="nav-section">
@@ -368,12 +374,16 @@ function AdminApp() {
             <div className="main-title">
               {selected.type === "dashboard" && "Dashboard"}
               {selected.type === "users" && "Utilisateurs"}
+              {selected.type === "coaching" && "Page Coaching"}
+              {selected.type === "homeLayout" && "Layout Accueil"}
               {selected.type === "course" && courses[selected.ci]?.title}
               {selected.type === "chapter" && courses[selected.ci]?.levels[selected.li]?.chapters[selected.chi]?.title}
             </div>
             <div className="main-subtitle">
               {selected.type === "dashboard" && `${courses.length} parcours · ${totalChapters} chapitres · ${totalQuiz} questions`}
               {selected.type === "users" && "Gestion des comptes et accès premium"}
+              {selected.type === "coaching" && "Modifier les textes de la page coaching"}
+              {selected.type === "homeLayout" && "Réordonner les blocs de la page d'accueil et les parcours"}
               {selected.type === "course" && "Paramètres du parcours"}
               {selected.type === "chapter" && `${courses[selected.ci]?.title} › ${courses[selected.ci]?.levels[selected.li]?.level}`}
             </div>
@@ -386,6 +396,8 @@ function AdminApp() {
         <div className="main-content">
           {selected.type === "dashboard" && <DashboardView courses={courses} nav={nav} updateCourses={updateCourses} showToast={showToast}/>}
           {selected.type === "users" && <UsersView showToast={showToast}/>}
+          {selected.type === "coaching" && <CoachingEditor showToast={showToast}/>}
+          {selected.type === "homeLayout" && <HomeLayoutEditor courses={courses} updateCourses={updateCourses} showToast={showToast}/>}
           {selected.type === "course" && <CourseEditor courses={courses} ci={selected.ci} updateCourses={updateCourses} nav={nav} showToast={showToast}/>}
           {selected.type === "chapter" && <ChapterEditor courses={courses} ci={selected.ci} li={selected.li} chi={selected.chi} updateCourses={updateCourses} showToast={showToast}/>}
         </div>
@@ -637,6 +649,11 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
                 Pour obtenir le lien embed : va sur YouTube → Partager → Intégrer → copie le lien src="https://www.youtube.com/embed/..."
               </div>
             </div>
+            <div className="form-group">
+              <label className="form-label">Source / Crédit vidéo (optionnel)</label>
+              <input className="form-input" value={chapter.videoSource||""} onChange={e=>update(ch=>{ch.videoSource=e.target.value||undefined})} placeholder="Ex: Aris.Drives YouTube Channel"/>
+              <div className="para-hint" style={{marginTop:4}}>Affiché en petit sous la vidéo dans l'app</div>
+            </div>
             {chapter.videoUrl && (
               <div style={{marginTop:12}}>
                 <label className="form-label">Aperçu</label>
@@ -785,6 +802,77 @@ function UsersView({ showToast }) {
       </div>
     </div>
   );
+}
+
+// ─── COACHING EDITOR ──────────────────────────────────────────
+function CoachingEditor({ showToast }) {
+  const loadS=()=>{try{const s=localStorage.getItem("acc-coaching-settings");return s?JSON.parse(s):{}}catch{return{}}};
+  const [settings, setSettings] = useState(loadS);
+  const c = settings.coaching || {title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
+  const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
+
+  return(<div>
+    <div className="card"><div className="card-header"><div className="card-title">📝 Textes de la page</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">Titre principal</label><input className="form-input" value={c.title} onChange={e=>upd(d=>{d.title=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Sous-titre</label><input className="form-input" value={c.subtitle} onChange={e=>upd(d=>{d.subtitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Titre session</label><input className="form-input" value={c.sessionTitle} onChange={e=>upd(d=>{d.sessionTitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Sous-titre session</label><input className="form-input" value={c.sessionSub} onChange={e=>upd(d=>{d.sessionSub=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Description</label><textarea className="form-input" rows={3} value={c.sessionDesc} onChange={e=>upd(d=>{d.sessionDesc=e.target.value})}/></div>
+    </div></div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">✨ Avantages listés</div><button className="btn btn-sm btn-primary" onClick={()=>upd(d=>{d.features=[...d.features,"Nouvel avantage"]})}>+ Ajouter</button></div><div className="card-body">
+      {(c.features||[]).map((f,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:6}}>
+        <input className="form-input" style={{marginBottom:0}} value={f} onChange={e=>upd(d=>{d.features[i]=e.target.value})}/>
+        {i>0&&<button className="btn-icon" onClick={()=>upd(d=>{const t=d.features[i];d.features[i]=d.features[i-1];d.features[i-1]=t})}>↑</button>}
+        <button className="btn-icon" style={{color:"var(--red)"}} onClick={()=>upd(d=>{d.features.splice(i,1)})}>✗</button>
+      </div>)}
+    </div></div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">🔗 Bouton de réservation</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">URL de réservation</label><input className="form-input" value={c.bookUrl||""} onChange={e=>upd(d=>{d.bookUrl=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Texte du bouton</label><input className="form-input" value={c.bookLabel||""} onChange={e=>upd(d=>{d.bookLabel=e.target.value})}/></div>
+    </div></div>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={()=>showToast("Page coaching sauvegardée ! (Rechargez l'app pour voir)")}>💾 Confirmer les changements</button>
+  </div>);
+}
+
+// ─── HOME LAYOUT EDITOR ──────────────────────────────────────
+function HomeLayoutEditor({ courses, updateCourses, showToast }) {
+  const loadS=()=>{try{const s=localStorage.getItem("acc-coaching-settings");return s?JSON.parse(s):{}}catch{return{}}};
+  const [settings, setSettings] = useState(loadS);
+  const layout = settings.homeLayout || ["nextLesson","courses"];
+  const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
+
+  const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
+
+  return(<div>
+    <div className="card"><div className="card-header"><div className="card-title">🏠 Ordre des blocs sur l'accueil</div></div><div className="card-body">
+      <div className="para-hint">Déplace les blocs pour changer l'ordre. "Next Lesson" en haut = mise en avant.</div>
+      {layout.map((key,i)=>(
+        <div key={key} className="list-item">
+          <span className="drag-handle">☰</span>
+          <div className="item-info"><div className="item-title">{blockLabels[key]||key}</div></div>
+          <div className="item-actions">
+            {i>0&&<button className="btn-icon" onClick={()=>{const n=[...layout];const t=n[i];n[i]=n[i-1];n[i-1]=t;setLayout(n)}}>↑</button>}
+            {i<layout.length-1&&<button className="btn-icon" onClick={()=>{const n=[...layout];const t=n[i];n[i]=n[i+1];n[i+1]=t;setLayout(n)}}>↓</button>}
+          </div>
+        </div>
+      ))}
+    </div></div>
+
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Ordre des parcours</div></div><div className="card-body">
+      <div className="para-hint">Change l'ordre d'affichage des parcours dans l'app.</div>
+      {courses.map((c,ci)=>(
+        <div key={c.id} className="list-item">
+          <span style={{fontSize:24}}>{c.icon}</span>
+          <div className="item-info"><div className="item-title">{c.title}</div><div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres</div></div>
+          <div className="item-actions">
+            {ci>0&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci-1];d[ci-1]=t})}>↑</button>}
+            {ci<courses.length-1&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci+1];d[ci+1]=t})}>↓</button>}
+          </div>
+        </div>
+      ))}
+    </div></div>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={()=>showToast("Layout sauvegardé ! (Rechargez l'app pour voir)")}>💾 Confirmer</button>
+  </div>);
 }
 
 // ─── RENDER ───────────────────────────────────────────────────
