@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ACC Coaching · Admin Panel</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#101114;--surface:#16171c;--surface2:#1c1d23;--surface3:#22232a;--border:#2a2b33;--border2:#35363f;--text:#e4e4e7;--text2:#9294a0;--text3:#62647080;--accent:#e11d48;--accent2:#ff3d6a;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;--radius:8px}
+    html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+    ::selection{background:var(--accent);color:#fff}
+    input,textarea,select,button{font-family:inherit;font-size:inherit}
+    .admin-layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    @media(max-width:768px){.admin-layout{grid-template-columns:1fr}.sidebar{display:none}.sidebar.open{display:flex;position:fixed;inset:0;z-index:100;width:100%}}
+
+    /* Sidebar */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .sidebar-header{padding:20px;border-bottom:1px solid var(--border)}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+    .sidebar-logo span:first-child{font-size:20px}
+    .sidebar-logo span:last-child{font-size:18px;font-weight:700;color:var(--accent);letter-spacing:1px}
+    .sidebar-sub{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase}
+    .sidebar-nav{flex:1;overflow-y:auto;padding:12px}
+    .nav-section{margin-bottom:16px}
+    .nav-section-title{font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;padding:8px 12px;font-weight:600}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);cursor:pointer;color:var(--text2);transition:all .15s;border:none;background:none;width:100%;text-align:left;font-size:13px}
+    .nav-item:hover{background:var(--surface2);color:var(--text)}
+    .nav-item.active{background:var(--accent)15;color:var(--accent);font-weight:600}
+    .nav-item .nav-icon{font-size:16px;width:24px;text-align:center}
+    .nav-item .nav-badge{margin-left:auto;font-size:11px;background:var(--surface3);padding:2px 8px;border-radius:10px;color:var(--text3)}
+
+    .sidebar-footer{padding:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+
+    /* Main */
+    .main{overflow-y:auto;max-height:100vh}
+    .main-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:50}
+    .main-title{font-size:20px;font-weight:700}
+    .main-subtitle{font-size:12px;color:var(--text2);margin-top:2px}
+    .main-actions{display:flex;gap:8px;align-items:center}
+    .main-content{padding:28px}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap}
+    .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{background:var(--accent2)}
+    .btn-secondary{background:var(--surface2);color:var(--text);border-color:var(--border)}.btn-secondary:hover{background:var(--surface3)}
+    .btn-ghost{background:transparent;color:var(--text2)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+    .btn-danger{background:transparent;color:var(--red);border-color:var(--red)30}.btn-danger:hover{background:var(--red)15}
+    .btn-sm{padding:5px 10px;font-size:12px}
+    .btn-icon{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border);cursor:pointer;color:var(--text2);transition:all .15s}
+    .btn-icon:hover{background:var(--surface3);color:var(--text)}
+
+    /* Cards */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+    .card-body{padding:20px}
+    .card+.card{margin-top:16px}
+
+    /* Form elements */
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+    .form-input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;transition:border-color .15s}
+    .form-input:focus{outline:none;border-color:var(--accent)}
+    .form-input::placeholder{color:var(--text3)}
+    textarea.form-input{resize:vertical;min-height:80px;line-height:1.6}
+    select.form-input{cursor:pointer}
+
+    /* List items */
+    .list-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;background:var(--surface);transition:all .15s}
+    .list-item:hover{border-color:var(--border2);background:var(--surface2)}
+    .list-item .drag-handle{color:var(--text3);cursor:grab;font-size:16px;user-select:none}
+    .list-item .item-info{flex:1;min-width:0}
+    .list-item .item-title{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .list-item .item-sub{font-size:11px;color:var(--text3);margin-top:2px}
+    .list-item .item-actions{display:flex;gap:4px}
+    .list-item.dragging{opacity:.5;border-color:var(--accent)}
+
+    /* Color dot */
+    .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+    .tab{padding:10px 20px;cursor:pointer;color:var(--text2);font-weight:600;font-size:13px;border:none;background:none;border-bottom:2px solid transparent;transition:all .15s}
+    .tab:hover{color:var(--text)}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+    /* Toast */
+    .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--radius);color:#fff;font-weight:600;font-size:13px;z-index:999;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px}
+    .toast-success{background:var(--green)}
+    .toast-error{background:var(--red)}
+    @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+    /* Quiz option row */
+    .quiz-option-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+    .quiz-option-row input{flex:1}
+    .quiz-option-correct{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent;transition:all .15s;flex-shrink:0}
+    .quiz-option-correct.is-correct{border-color:var(--green);background:var(--green)22;color:var(--green)}
+    .quiz-option-correct:hover{border-color:var(--green)}
+
+    /* Empty state */
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+    .empty-state .empty-icon{font-size:48px;margin-bottom:16px}
+    .empty-state .empty-text{font-size:15px;margin-bottom:8px;color:var(--text2)}
+    .empty-state .empty-sub{font-size:12px;margin-bottom:20px}
+
+    /* Paragraph block */
+    .para-block{position:relative;margin-bottom:8px}
+    .para-block textarea{padding-right:40px}
+    .para-block .para-delete{position:absolute;right:8px;top:8px}
+    .para-hint{font-size:11px;color:var(--text3);margin-top:4px;margin-bottom:12px}
+
+    /* Mobile menu button */
+    .mobile-menu-btn{display:none;position:fixed;bottom:20px;right:20px;z-index:90;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 20px #00000050}
+    @media(max-width:768px){.mobile-menu-btn{display:flex;align-items:center;justify-content:center}}
+
+    /* Status bar */
+    .status-bar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--green)10;border:1px solid var(--green)30;border-radius:var(--radius);margin-bottom:20px;font-size:12px;color:var(--green)}
+    .status-bar.warning{background:var(--yellow)10;border-color:var(--yellow)30;color:var(--yellow)}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ━━━ SUPABASE CONFIG ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SUPABASE_URL = "https://datqrnbycspyicedbytv.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhdHFybmJ5Y3NweWljZWRieXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzOTQ2NjEsImV4cCI6MjA4OTk3MDY2MX0.Ig8UCea115dljwY6foaSID67JT9NWwk17XwAZFZU2Bk";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ━━━ ADMIN EMAIL — Change this to YOUR email ━━━━━━━━━━━━━━━━
+const ADMIN_EMAIL = "dorian.castelli29@gmail.com";
+
+// ─── STORAGE ──────────────────────────────────────────────────
+const DATA_KEY = "acc-coaching-courses";
+const PROGRESS_KEY = "acc-coaching-progress";
+
+const DEFAULT_COURSES=[
+{id:"pilotage",title:"Pure Driving",icon:"🏎️",desc:"Master the fundamentals of driving on ACC Console",levels:[
+{level:"Beginner",color:"#22c55e",chapters:[
+{id:"p-d-1",title:"Controller Setup & Driving Position",desc:"Optimize your config for peak performance on console.",videoUrl:"",content:["Before chasing performance on track, it's essential to have an optimal controller setup. ACC Console default settings aren't suited for precise driving.","**Stick sensitivity**: Reduce sensitivity to around 40-50%. This gives you more precision in tight corners. A stick that's too sensitive makes the car nervous and unpredictable.","**Deadzone**: Set the deadzone between 5-10%. Too high and you lose responsiveness — the car won't react to small inputs. Too low and it reacts to every micro-movement, making it twitchy on straights.","**Braking**: Use the left trigger for braking with progressive travel. Enable ABS at 3-4 to start — this prevents lock-ups while still giving you feel.","**Throttle**: The right trigger must be progressive. Avoid mashing the throttle on corner exit, especially in the rain. GT3 cars have over 500hp — they demand respect.","**Camera settings**: Use the cockpit or hood camera. Chase camera disconnects you from the car's behavior. You need to feel weight transfer through the visual cues of the cockpit."],quiz:[{question:"What stick sensitivity is recommended for beginners?",options:["10-20%","40-50%","80-90%","100%"],correct:1},{question:"Why reduce the stick deadzone?",options:["To go faster on straights","To gain steering responsiveness","To reduce tire wear","To save fuel"],correct:1},{question:"What ABS level is recommended for beginners?",options:["ABS off (0)","ABS 1-2","ABS 3-4","ABS max (12)"],correct:2}]},
+{id:"p-d-2",title:"Braking Fundamentals",desc:"Learn to brake effectively and gain seconds per lap.",videoUrl:"",content:["Braking is the #1 skill in sim racing. Good braking can save you 1-2 seconds per lap on ACC.","**Degressive braking**: Apply maximum brake pressure at the start (80-100%), then progressively release as you approach the turn-in point. Think of squeezing a sponge hard then slowly letting go.","**Trail braking**: Maintain slight brake pressure as you enter the corner. This transfers weight to the front axle, increasing grip and helping the car rotate. Smoothly release brake as you add steering lock.","**Braking points**: Use distance markers (150m, 100m, 50m boards) as initial references. Consistency in hitting the same point every lap matters more than braking late.","**Common mistakes**: Never lock up. Never brake hard while at full steering lock — that's a recipe for understeer or spin.","**Practice drill**: Go to Monza. Lap after lap, focus only on hitting the same braking point at Turn 1. When you hit it 10 laps in a row, you're ready to push later."],quiz:[{question:"What is degressive braking?",options:["Braking harder and harder","Braking hard then releasing progressively","Engine braking only","Not braking at all"],correct:1},{question:"What does trail braking achieve?",options:["Increases top speed","Transfers weight forward for more grip","Reduces brake wear","Saves fuel"],correct:1},{question:"What happens if you brake hard while turning?",options:["Nothing wrong","Tires heat up faster","Spin or loss of control","Automatic penalty"],correct:2}]},
+{id:"p-d-3",title:"Racing Line: The Ideal Trajectory",desc:"Understand and apply optimal racing lines.",videoUrl:"",content:["The ideal racing line is the fastest path through a corner. On ACC, this separates a 2:20 Spa lap from a 2:16.","**Outside-Inside-Outside**: Enter from outside, aim for the apex (inside), drift to outside on exit. This maximizes the effective corner radius, allowing more speed.","**The apex**: A **late apex** — clipping inside slightly past the geometric center — is almost always faster. It sacrifices entry speed but gives much better exit speed onto the straight.","**Linked corners**: Sacrifice speed in the first to optimize the second. Prioritize the corner leading to the longest straight. At Spa's Bus Stop chicane, a poor exit onto Kemmel Straight costs far more than a perfect entry.","**Track limits**: ACC enforces strict limits. Two wheels within white lines at all times. Going wide might feel faster but track limit warnings cost more time than you gained.","**On console**: Enable the racing line assist for first sessions on new tracks. It's color-coded: green = accelerate, red = brake, yellow = coast. Disable it ASAP — it teaches a generic line that isn't always optimal."],quiz:[{question:"What is the basic principle of an ideal racing line?",options:["Inside-Outside-Inside","Outside-Inside-Outside","Always stay in the middle","Cut every corner"],correct:1},{question:"Why is a late apex often preferable?",options:["Easier to execute","Less tire wear","Better exit speed onto the straight","Required by regulations"],correct:2},{question:"In linked corners, which to prioritize?",options:["Always the first","The one leading to the longest straight","The tightest one","Neither, go flat out"],correct:1}]}
+]},
+{level:"Intermediate",color:"#f59e0b",chapters:[
+{id:"p-i-1",title:"Tire Management & Temperatures",desc:"Preserve your tires for consistent speed over long stints.",videoUrl:"",content:["On ACC, tires are a living part of your car. Their condition changes every lap.","**Temperature window**: GT3 tires work optimally between 75°C and 95°C. Below 75°C = less grip. Above 95°C = rapid degradation.","**Warm-up phase**: First 2-3 laps, tires are cold. Gentle weaving helps fronts; progressive braking warms rears. Don't push to 100% until lap 3.","**Pressures**: Ideal hot pressure is 27.5 PSI (±0.3). Tires gain about 1-2 PSI from cold to hot. If hot pressures are too high (28+), lower cold pressures.","**Driving style impact**: Aggressive inputs kill tires. Smooth driving extends tire life dramatically. In a 30-minute race, a smooth driver can be 0.5s faster in final laps simply because their tires are healthier.","**Reading tire data**: Use the MFD tire widget to monitor inside, middle, and outside temperatures. All three readings per tire should be within 5°C. If inside is much hotter — too much camber. Outside hotter — possible understeer or not enough camber."],quiz:[{question:"Ideal temperature window for GT3 tires?",options:["50-65°C","75-95°C","100-120°C","130-150°C"],correct:1},{question:"Recommended hot pressure?",options:["24.0 PSI","25.5 PSI","27.5 PSI","30.0 PSI"],correct:2},{question:"How many laps to warm up tires?",options:["1 lap","About 2-3 laps","5-6 laps","10 laps"],correct:1}]},
+{id:"p-i-2",title:"Advanced Cornering Techniques",desc:"Master trail braking, throttle steer and smooth speed.",videoUrl:"",content:["Time to unlock techniques that separate fast from truly quick drivers.","**Advanced trail braking**: Modulate brake pressure to actively control rotation. More brake = more weight on front = car rotates more. Releasing brake transfers weight rearward = stability. Think of the brake pedal as a rotation dial.","**Throttle steer**: All GT3s are rear-wheel drive. Gentle throttle stabilizes the car. More throttle = weight to rear = less front grip (understeer). Sudden lift = weight forward = lift-off oversteer. Use this intentionally.","**The pendulum effect**: In quick chicanes, use the car's weight transfer. As you turn one direction, outside tires load. Quick transition to opposite direction uses the unloading to change direction faster. Smooth, rhythmic driving through chicanes is faster than jerky inputs.","**Vision**: Eyes should be 2-3 seconds ahead. In a fast corner, look at the exit while at the apex. Your hands follow your eyes naturally. This is the single biggest differentiator between intermediate and advanced drivers.","**Rhythm over attack**: The fastest lap is not the most dramatic. Watch any GT3 onboard — the car looks calm, almost lazy. Every slide and correction is wasted energy and wasted time. Aim for laps that feel effortless."],quiz:[{question:"How does trail braking help turning?",options:["Cools front tires","Controls rotation via weight transfer","Only reduces speed","Activates the differential"],correct:1},{question:"What is throttle steer?",options:["Turning the wheel faster","Using the throttle to influence direction and balance","A driving assist system","Engine braking"],correct:1},{question:"What matters most for performance?",options:["One ultra-fast lap","Consistency and smooth rhythm","Braking as late as possible","Best setup"],correct:1}]}
+]},
+{level:"Expert",color:"#ef4444",chapters:[
+{id:"p-e-1",title:"Driving in the Rain",desc:"Master wet conditions — ACC's greatest challenge.",videoUrl:"",content:["ACC has the most realistic rain model in sim racing. Skilled wet-weather drivers gain 3-5 seconds per lap over those who aren't.","**The dry line is treacherous**: Deposited rubber from months of racing becomes extremely slippery when wet. Drive on the 'clean' asphalt — off the rubbered line.","**Puddles and aquaplaning**: ACC dynamically models water accumulation. At high speed, tires can't displace enough water = aquaplaning = total grip loss with zero warning. Learn where puddles form.","**Wet setup**: Switch to wet tires immediately. Raise ride height by 5-10mm. Soften anti-roll bars significantly. Reduce camber slightly. Consider reducing downforce since speeds are lower.","**The golden rule**: Every input — steering, throttle, brake — must be delivered with extreme smoothness. Imagine controls are made of glass. The throttle is especially dangerous: wheelspin comes instantly.","**Reading conditions**: The track doesn't wet/dry uniformly. Some areas dry faster (wind-exposed), others stay wet longer (shaded, low spots). Watch surface color — darker = wetter. Adapt braking and speed sector by sector."],quiz:[{question:"Why is the dry racing line dangerous in rain?",options:["It's longer","Deposited rubber becomes very slippery when wet","Marshals forbid it","Rain tires don't work on it"],correct:1},{question:"What chassis setup for rain?",options:["Stiffer anti-roll bars","Lower ride height","Softer anti-roll bars + higher ride height","Maximum downforce"],correct:2},{question:"Golden rule in the rain?",options:["Brake later","Stay on dry line","Extreme smoothness on all inputs","Accelerate through puddles"],correct:2}]},
+{id:"p-e-2",title:"Managing Traffic in Race",desc:"Navigate through backmarkers and lapped cars safely.",videoUrl:"",content:["Traffic management is a hidden skill that makes or breaks your result.","**Reading the situation**: When approaching a slower car, spend a corner or two observing their pattern. Are they consistent? Aware you're there? This 2-second investment saves you from disasters.","**The approach**: Close the gap gradually — don't arrive at full speed. Arriving on someone's bumper panics the slower driver and gives you no room for error.","**Communicate with positioning**: Your car position IS your communication. Position clearly to one side before the overtaking zone. This signals your intent.","**Being lapped**: When a faster car approaches, be **predictable**. Hold your line and lift slightly on the straight. Never suddenly slow down or swerve off the racing line — that creates unpredictable scenarios.","**The blue flag mentality**: If someone is clearly faster, facilitate the pass. Holding them up risks a collision that ruins both races.","**Traffic in the wet**: Spray reduces visibility massively. Increase following distances and only pass in clear zones with good visibility."],quiz:[{question:"Before overtaking a slower car, what should you do?",options:["Dive immediately","Flash lights aggressively","Observe their pattern for a corner or two","Wait for them to pit"],correct:2},{question:"When being lapped, best approach?",options:["Slow down suddenly","Stay predictable and lift on the straight","Block to maintain position","Brake hard"],correct:1},{question:"Why is traffic more dangerous in rain?",options:["Slower cars are unpredictable","Spray reduces visibility and cars may be on different lines","Rain tires are too soft","More traffic in rain"],correct:1}]},
+{id:"p-e-3",title:"Mixed Conditions & Changing Weather",desc:"Master transitions between dry and wet conditions.",videoUrl:"",content:["ACC's dynamic weather creates the most challenging scenarios: the transition between dry and wet. Mastering these transitions wins races.","**Reading the sky**: Before rain arrives, the sky darkens and dark patches appear on the track surface. Start adjusting your driving — don't wait until you're sliding off.","**The drying track**: Arguably the hardest condition. Grip varies wildly corner to corner. Shaded areas stay wet while sunny sections dry quickly. Adjust braking and speed for EVERY corner individually.","**Tire crossover point**: There's a critical moment when slicks become faster than wets (and vice versa). Wet tires on a dry track overheat in a few laps. Too early on slicks when still damp is equally dangerous.","**No intermediates**: ACC has only dry and wet tires. Generally, if the track surface is still uniformly dark, stay on wets. When a dry line emerges, it's nearly time for slicks.","**Strategic advantage**: Being one lap early on the tire change can mean gaining 10+ seconds over hesitant competitors. Monitor the weather HUD and prepare your pit strategy in advance.","**Driving the transition**: Drive at about 80% confidence. Gradually increase or decrease aggression as you gather data about current grip. Treat every corner as a new experiment."],quiz:[{question:"What's the hardest weather condition?",options:["Full wet","Full dry","A drying track with variable grip","Light rain"],correct:2},{question:"When to switch from wets to slicks?",options:["As soon as rain stops","When a dry line starts to emerge","Only when completely dry","When wets are worn out"],correct:1},{question:"Biggest advantage during weather transitions?",options:["Best setup","Reacting before competitors","Being fastest in the dry","Having more fuel"],correct:1}]}
+]}
+]},
+{id:"racecraft",title:"Racecraft",icon:"⚔️",desc:"Learn to battle on track and win races",levels:[
+{level:"Beginner",color:"#22c55e",chapters:[
+{id:"r-d-1",title:"Online Etiquette & Safety Rating",desc:"The unwritten rules of online racing on ACC.",videoUrl:"",content:["The Safety Rating (SA) on ACC is your reputation — and on console, your ticket to better racing.","**SA explained**: Increases when you drive close to others without incidents. Drops sharply on contact. Aim for SA 70+ to unlock competitive lobbies.","**Predictability**: The most dangerous driver isn't the slowest — it's the unpredictable one. Hold your line, don't make sudden moves, signal intentions through positioning.","**Leaving space**: You MUST leave a car's width if your opponent's front wing is alongside your rear wheel or further forward. Not optional.","**After an incident**: If you cause a collision, lift off and let the affected driver repass. On console, people remember who races clean.","**The 80% rule**: When starting online, drive at 80% of your qualifying pace. This margin saves you from the unexpected."],quiz:[{question:"What SA to aim for?",options:["SA 30+","SA 50+","SA 70+","SA 99"],correct:2},{question:"Most important quality online?",options:["Raw speed","Predictability","Aggressiveness","Perfect setup"],correct:1},{question:"If you cause a collision?",options:["Continue","Quit","Lift off and let them repass","Speed up"],correct:2}]},
+{id:"r-d-2",title:"Mastering Race Starts",desc:"The first lap is the most important of the race.",videoUrl:"",content:["More positions are gained/lost on lap 1 than the entire rest of the race.","**The green light**: Apply about 50-60% throttle just before lights go green, then progressively increase. Too much = wheelspin. Too little = sitting duck.","**Turn 1 — danger zone**: Brake 10-15m earlier than normal. Cars ahead may brake earlier; cars alongside limit escape routes; brakes and tires are cold.","**Grid strategy**: Outside gives more track space. Inside gives the apex advantage. Adapt based on your position.","**First 3 laps — survival mode**: Primary objective is to survive, not gain positions. Cold tires, cold brakes, nervous drivers. Stay calm, hold your position. Impatient drivers will eliminate themselves.","**The concertina effect**: In a pack, the braking wave amplifies — each car brakes earlier than the one ahead. At the back of a pack, you may need to brake 30m earlier than normal."],quiz:[{question:"Turn 1 braking on lap 1?",options:["Brake last moment","Brake 10-15m earlier","Don't brake","Normal trajectory"],correct:1},{question:"Why be patient first 3 laps?",options:["Save fuel","Positions don't count","Cold tires/brakes + nervous drivers = high risk","Let track clear"],correct:2},{question:"Risk of aggressive start?",options:["Time penalty","Wheelspin + lost positions or crash","Engine overheat","Disqualification"],correct:1}]},
+{id:"r-d-3",title:"Penalty System & ACC Rules",desc:"Understand ACC's penalty system to avoid costly mistakes.",videoUrl:"",content:["ACC has one of the most sophisticated penalty systems in sim racing. Ignorance won't save you from a penalty that ruins your race.","**Track limits**: Two wheels within white lines at all times. After 3 warnings = 0.5 second penalty. Repeated violations increase it. Some corners are especially strict.","**Cutting corners**: Gaining a lasting advantage by cutting triggers an automatic slowdown penalty. You'll see a countdown — don't accelerate until it's clear.","**Pit lane penalties**: Exceeding the pit speed limit (usually 60-80 km/h) results in a penalty. Use the pit limiter button. Also respect the pit window for mandatory stops.","**Unsafe release**: Being released into another car's path can trigger a penalty. Yield if you see cars approaching pit exit.","**Penalty strategy**: Time penalties are added to your total. Don't panic — focus on driving clean. For drive-through penalties, serve immediately to minimize damage.","**The protest system**: In leagues, incidents can be reviewed post-race. Always race as if someone is watching — with game clips, they probably are."],quiz:[{question:"Track limit warnings before penalty?",options:["1","2","3","5"],correct:2},{question:"Cutting a corner for advantage?",options:["Nothing","Automatic slow-down penalty","Disqualification","Others vote to penalize you"],correct:1},{question:"After receiving a time penalty mid-race?",options:["Quit","Drive aggressively to make up time","Stay calm and drive clean","Slow down immediately"],correct:2}]}
+]},
+{level:"Intermediate",color:"#f59e0b",chapters:[
+{id:"r-i-1",title:"The Art of Overtaking",desc:"When, where and how to overtake cleanly.",videoUrl:"",content:["A successful overtake is prepared several corners in advance. Calculated, patient, decisive — never impulsive.","**Braking zone — your weapon**: 90% of overtakes happen here. Get within 0.3-0.5s using slipstream, pull out alongside before the braking zone. If your front wing is alongside their rear wheel, they must leave space.","**The switchback**: If the opponent defends inside, let them. Brake later outside, take wider entry, use superior exit speed to repass on the following straight.","**Slipstream mastery**: ACC's slipstream gives 5-10 km/h at 0.3-0.5s behind. But dirty air causes understeer in corners. Plan to complete the pass before corner entry.","**Never force it**: If the move isn't clean, abort. A failed forced overtake costs 10-30 seconds minimum and potentially ends both races.","**The psychological element**: Consistent pressure breaks opponents. Showing your nose lap after lap creates stress. They'll make mistakes — braking too late, running wide. Capitalize when they do. Racecraft is chess, not boxing."],quiz:[{question:"Where do most overtakes happen?",options:["Mid-corner","Braking zone","Corner exit","Pit lane"],correct:1},{question:"What is the switchback?",options:["Quick tire change","Defending inside","Let opponent take inside, use better exit to repass","Suspension setup"],correct:2},{question:"Effective slipstream distance?",options:["0.1s","0.3-0.5s","1.0-1.5s","3.0s+"],correct:1}]},
+{id:"r-i-2",title:"Defending Your Position",desc:"The art of legitimate defense without crossing the line.",videoUrl:"",content:["Defense is often neglected. The best defenders make it incredibly difficult to pass — without doing anything illegal.","**One-move rule**: ONE defensive move per straight. Move to cover the inside once, then hold that line until the braking zone. Weaving is dangerous driving.","**Defending inside**: Move to the inside before the braking zone to take away the overtaking spot. Downside: you compromise your own corner entry and exit speed.","**Defending with pace**: The best defense is being fast. Match the car behind through corners and they'll never get close enough on the straight. Focus on nailing exits before long straights.","**The late braking trap**: Position defensively but brake at your normal point. The attacker out-brakes themselves, runs deep, and you switch back underneath.","**Mirrors and awareness**: Use the look-back button frequently. Knowing exactly where the car behind is allows smart defensive decisions.","**When NOT to defend**: If a car is significantly faster (closed 3+ seconds), let them past cleanly. Defending a position you can't hold is a recipe for disaster."],quiz:[{question:"Defensive moves allowed per straight?",options:["Unlimited","One","Two","Three"],correct:1},{question:"Best form of defense?",options:["Weaving","Brake-checking","Being fast on corner exits","Blocking aggressively"],correct:2},{question:"When should you NOT defend?",options:["On fresh tires","When the car behind is significantly faster","On the first lap","In rain"],correct:1}]}
+]},
+{level:"Expert",color:"#ef4444",chapters:[
+{id:"r-e-1",title:"Complete Race Strategy",desc:"Manage your race from start to finish like a pro.",videoUrl:"",content:["Races are won through strategy, management, and patience. A strategic driver beats a faster driver regularly.","**Fuel management**: Every liter adds ~0.03s per lap. Over 20 laps with 50kg extra fuel, you lose almost a second per lap. Calculate: laps × consumption/lap + 1 lap margin.","**Pit timing**: Early pitting = fresh tires in traffic. Late pitting = clear air but worn tires at end. Generally the middle third of the race is the optimal window.","**Gap management**: Monitor gaps ahead AND behind. Car behind closing at 0.3s/lap = on your tail in 10 laps. Prepare your defense. Car ahead pulling away = reassess your pace.","**Tire conservation vs pace**: First third of stint = build a gap or close. Middle third = maintain tires. Final third = attack with remaining grip or defend. This ebb and flow is what makes great racers.","**Final laps**: Where races are won and lost. Body is tired, concentration waning. Stay in your bubble — focus on braking points, apexes, exits. If your position is secure, zero unnecessary risks."],quiz:[{question:"How to calculate fuel?",options:["Always fill up","Laps × consumption + 1 margin","Half tank","Remaining laps only"],correct:1},{question:"Advantage of early pitting?",options:["Fresh tires for longer","Less pit time","Avoid traffic","Cheaper fuel"],correct:0},{question:"Final laps while leading?",options:["Push maximum","Stay focused, zero risks","Deliberately slow","Let them close"],correct:1}]}
+]}
+]},
+{id:"tracks",title:"Track Guides",icon:"🗺️",desc:"Circuit breakdowns with braking points, key corners and strategies",levels:[
+{level:"Beginner",color:"#22c55e",chapters:[
+{id:"t-d-1",title:"Monza — The Temple of Speed",desc:"Master the iconic high-speed Italian circuit.",videoUrl:"",content:["Monza is the perfect learning circuit. Long straights and heavy braking zones teach discipline and reward straight-line speed.","**Turn 1 (Variante del Rettifilo)**: Brake at 150m board, slightly left of center. Turn-in right, clip first apex gently, switch left for second apex. Don't overdrive — clean exit beats aggressive entry. This is where 50% of online incidents happen.","**Curva Grande**: Fast right-hander, almost flat in qualifying. Slight lift in race conditions with fuel. Hug left on entry, flow to the right apex. Smooth inputs mandatory at 230+ km/h.","**Second chicane (Variante della Roggia)**: Brake at 100m. Tighter than T1, easy to overshoot. Inside kerbs are aggressive — ride too hard = track limit penalty.","**Lesmo 1 & 2**: Two medium-speed right-handers rewarding precision. Lesmo 1: brake at 100m, late apex, let car run wide. Lesmo 2: brake earlier, tight exit to set up Ascari.","**Ascari chicane**: Fast left-right. Brake at 50m. Straighten the chicane as much as possible — minimize steering input by making both direction changes feel like one smooth S-curve.","**Parabolica**: Final corner. Brake at 100m, turn in at kerb start, focus on exit speed. A good Parabolica exit gains 0.3s on the following straight."],quiz:[{question:"At Monza T1, what's the priority?",options:["Maximum entry speed","A clean chicane exit","Aggressive kerb riding","Braking as late as possible"],correct:1},{question:"Braking reference for Ascari?",options:["200m board","150m board","100m board","50m board"],correct:3},{question:"Why is the Parabolica exit important?",options:["It leads to the longest straight","Track is wider there","DRS zone after it","It's the hardest corner"],correct:0}]},
+{id:"t-d-2",title:"Spa-Francorchamps — The Ultimate Test",desc:"Conquer the legendary 7km Belgian circuit.",videoUrl:"",content:["Spa is the ultimate driver's circuit. 7km with massive elevation changes, testing every aspect of your driving.","**La Source**: Tight hairpin right. Brake at 50m, turn in late, focus on exit speed — the Kemmel Straight follows. Bad exit costs you all the way up the hill.","**Eau Rouge / Raidillon**: The most famous complex in racing. Typically flat in qualifying, may require a lift in race with worn tires. The key: commit fully or lift early. Hesitating mid-corner at 260 km/h = guaranteed crash.","**Les Combes**: Chicane at hilltop. Brake at 100m. Prime overtaking spot. Exit is crucial for the run down through Malmedy.","**Pouhon**: Double-apex left-hander. Enter from right, clip first apex, drift mid-corner, tighten for second apex. Nearly flat with good tires. Smooth steering mandatory.","**Blanchimont**: Flat-out left kink at 270+ km/h. Any instability = wall. Position right, gentle steering, full width on exit. In rain, terrifying and demands total commitment.","**Bus Stop chicane**: Final chicane. Brake at 100m. Most technically demanding corner at Spa. Balance aggressive entry with perfect exit onto the pit straight."],quiz:[{question:"Key to Eau Rouge/Raidillon?",options:["Always brake","Commit fully or lift early — never hesitate","Take it slowly","Always flat out"],correct:1},{question:"Why is La Source exit critical?",options:["Leads to Kemmel Straight","It's a tight hairpin","Kerbs are dangerous","It's the first corner"],correct:0},{question:"What makes Pouhon special?",options:["Fastest corner","Double-apex, nearly flat with good tires","Easy overtaking spot","Always 2nd gear"],correct:1}]}
+]},
+{level:"Intermediate",color:"#f59e0b",chapters:[
+{id:"t-i-1",title:"Brands Hatch — Short but Intense",desc:"Master the narrow, punishing British circuit.",videoUrl:"",content:["Brands Hatch is short but arguably the most intense circuit on the calendar. Narrow, fast, undulating, incredibly punishing.","**Paddock Hill Bend**: Brake over the crest — car gets light as track drops away sharply. Brake at 100m, turn in as track flattens, late apex, power on as track rises on exit.","**Druids**: Tight hairpin at hilltop. Brake at 50m. Don't carry too much speed — corner tightens on exit. Common mistake: turning in too early, going wide on exit.","**Graham Hill Bend**: Medium-speed right, track drops downhill through entry. Smooth is essential. Carry speed through apex, full width on exit.","**Stirlings & Clark Curve**: Fast section through trees. Stirlings is double-apex, almost flat with good tires. Clark Curve sweeps left into Clearways.","**Clearways**: Final corner before the long pit straight. Exit speed here defines straight-line performance. Turn in from right, clip apex mid-corner, every inch of track on exit.","**General tips**: Track is narrow — side-by-side racing is risky. Use slipstream on the main straight for overtakes. Everywhere else, patience is king."],quiz:[{question:"Challenge at Paddock Hill Bend?",options:["It's very slow","You brake over a crest with the track dropping away","Kerbs are dangerous","Hard to see apex"],correct:1},{question:"Why is Clearways important?",options:["Tightest corner","Exit speed carries onto the long pit straight","Easiest to overtake","Track is widest"],correct:1},{question:"Overtaking advice at Brands Hatch?",options:["Overtake everywhere","Use slipstream on main straight, patience elsewhere","Only at Druids","Never overtake"],correct:1}]},
+{id:"t-i-2",title:"Misano — The Racecraft Circuit",desc:"A technical track where racecraft matters most.",videoUrl:"",content:["Misano is tight and technical. Racecraft matters more than outright speed here.","**Sector 1**: The opening right-left combination in 3rd gear. Rhythm is everything — smooth inputs, good exit from Turn 2 for the run to Turn 4.","**Turn 4 (Quercia)**: Fast left-hander, slightly downhill entry adds speed and reduces front grip. Brake at 100m in a straight line. A small lift before turn-in helps stability in race trim.","**The hairpins (T8, T10, T14)**: Define Misano. Brake hard, trail brake to rotate, late apex, focus on traction. These are the primary overtaking zones.","**Turn 11 (Carro)**: Downhill right-left, blind over a crest. Brake just before the track drops, commit to the direction change. Half-hearted inputs = running wide.","**Turn 16 (final corner)**: THE corner at Misano. Right-hand hairpin onto the main straight. Exit speed here defines your ability to attack or defend into Turn 1. Use every bit of exit kerb.","**Racecraft at Misano**: Narrow = defensive positioning is very effective. If defending, cover inside at hairpins. If attacking, be patient — the defender will make a mistake. Consistency wins at Misano."],quiz:[{question:"What defines fast lap times at Misano?",options:["Top speed","Exit speed from the hairpins","Aggressive kerb riding","Late braking everywhere"],correct:1},{question:"Most important corner at Misano?",options:["Turn 1","Turn 4","Turn 11","Turn 16 (final corner)"],correct:3},{question:"Racecraft key at Misano?",options:["Constant attacking","Patience and waiting for mistakes","Only slipstream","Push 100% every lap"],correct:1}]}
+]},
+{level:"Expert",color:"#ef4444",chapters:[
+{id:"t-e-1",title:"Bathurst — Mount Panorama",desc:"The most dangerous and rewarding circuit in ACC.",videoUrl:"",content:["Mount Panorama is a legend. 6.2km carved into a mountain with blind crests, concrete walls, and elevation changes that take your breath away.","**The Chase (T1-T2)**: Fast downhill left-right. Brake at 150m for T1, carry speed through, set up for tight T2. Exit of T2 is critical — leads to the mountain climb.","**Mountain Straight to Griffins**: Road climbs steeply. Griffins Bend is a fast left-right with camber changes. Slight lift before entry, smooth through direction change, power up the hill. Walls are close.","**The Cutting to Reid Park**: Narrow bends with concrete walls on both sides. NOT a place for heroic driving. Learn the rhythm: left, right, right, left. Hit any wall = race over.","**Skyline and The Esses**: Top of the mountain. Fast direction changes with zero runoff. Track drops on the right, walls on the left. Commit to your line, be smooth, trust the car.","**Conrod Straight**: Fastest section — 290+ km/h down the mountain. Brake at 200m progressively. Track compression at the bottom loads the car — use this grip to rotate.","**The golden rule**: Consistency beats speed at Bathurst. Margins are razor-thin. Build speed gradually over many laps. Never push beyond 95% until you know the track intimately. One mistake = race over. Ten clean laps = a result to be proud of."],quiz:[{question:"Most important mindset at Bathurst?",options:["Maximum attack from lap 1","Consistency, building speed gradually","Ignore the walls","Push 100% every corner"],correct:1},{question:"Key challenge of The Cutting?",options:["Very fast","Narrow with concrete walls both sides","Always wet","Bumpy surface"],correct:1},{question:"Conrod Straight braking?",options:["As late as possible","Skip braking","Brake at 200m, progressively","Brake at 50m"],correct:2}]}
+]}
+]},
+{id:"mental",title:"Mental & Consistency",icon:"🧠",desc:"Build the mental framework that separates good from great",levels:[
+{level:"Beginner",color:"#22c55e",chapters:[
+{id:"m-d-1",title:"Focus & Concentration",desc:"Train your mind to stay sharp for an entire race.",videoUrl:"",content:["Sim racing demands sustained concentration for 20-60 minutes. Unlike real racing, there's no physical feedback — it's purely mental.","**Attention span**: Most people's attention wanders after 10-15 minutes. In a 30-minute race, you'll have multiple drift moments. These are when mistakes happen. Awareness of this tendency is step one.","**Anchor points**: Create mental focus points every lap. A braking marker, an apex, an exit point. When your mind wanders, bring it back to the next anchor point. Concrete tasks beat vague 'try to drive fast.'","**Breathing technique**: Before the race, take 3 deep breaths: in for 4 seconds, hold 4 seconds, out 4 seconds. This reduces adrenaline and prevents first-lap errors.","**Pre-race routine**: Do 3-5 warm-up laps. Check settings. Get water. Minimize distractions — close apps, phone on silent. Treat every race like it matters.","**Managing fatigue**: If concentration drops mid-race (missing braking points, inconsistent inputs), reduce pace for 2-3 laps. Drive at 90% while you mentally reset. You'll lose less time at a smooth 90% than making mistakes at 100%."],quiz:[{question:"When does concentration typically start to drop?",options:["After 1 minute","After 10-15 minutes","Only in 1-hour+ races","It never drops"],correct:1},{question:"What are 'anchor points'?",options:["Physical screen markers","Specific focus points each lap (braking, apex, exit)","Setup save points","Qualifying references"],correct:1},{question:"When concentration drops mid-race?",options:["Push harder","Reduce pace 2-3 laps to mentally reset","Stop the race","Turn up music"],correct:1}]},
+{id:"m-d-2",title:"Dealing with Frustration",desc:"Turn negative emotions into fuel for improvement.",videoUrl:"",content:["Frustration is the #1 reason sim racers plateau or quit.","**The 5-second rule**: When something frustrating happens, give yourself 5 seconds to feel the emotion. Then consciously let it go and refocus on the next corner. Dwelling on an incident guarantees more mistakes. Fastest drivers have shortest memories.","**Reframing**: Instead of 'that idiot ruined my race,' try 'that was unfortunate, how do I recover the best result?' Redirect mental energy from anger to problem-solving.","**Learning mindset**: Every frustrating moment contains a lesson. Got dive-bombed? Maybe position more defensively. Spun? Tires beyond their limit. Braking error? Focus issue, not technique.","**Taking breaks**: After 3 bad races in a row, stop. Racing while frustrated builds bad habits and negative associations.","**The bigger picture**: In a month, you won't remember today's specific incident. But the habits you build handling frustration define your racing career. Every top sim racer has faced thousands of frustrating moments — the ones who made it learned from them."],quiz:[{question:"The 5-second rule?",options:["Count to 5 before quitting","5 seconds to feel it, then refocus","Wait 5 seconds before retaliating","Think 5 minutes"],correct:1},{question:"After 3 bad races?",options:["Keep going until a good one","Take a break, come back fresh","Change setup completely","Switch games"],correct:1},{question:"Extract from frustrating moments?",options:["Someone to blame","A lesson for improvement","A reason to quit","Nothing"],correct:1}]}
+]},
+{level:"Intermediate",color:"#f59e0b",chapters:[
+{id:"m-i-1",title:"Building Consistency",desc:"The skill that wins championships and rating points.",videoUrl:"",content:["Raw speed gets pole. Consistency wins races. The fastest lap rarely belongs to the winner.","**Defining consistency**: Lap times varying by less than 0.5 seconds over a full stint. If your best is 2:18.5 and worst is 2:19.8, that's 1.3s spread — too much. Aim for 0.3-0.5s maximum.","**The formula**: Speed at 95% of your limit + zero mistakes = consistency. Driving at 95% feels slower but produces faster race results. Mental shift from 'how fast?' to 'how consistently?' is the single biggest leap.","**10-lap challenge**: Do 10 consecutive laps. Throw out best and worst. Calculate the spread of remaining 8. Work on reducing spread, not fastest time. Trains race-pace consistency.","**Tire-friendly consistency**: Consistent driving = longer-lasting tires = more grip when it matters. It's a virtuous cycle.","**Consistency under pressure**: When someone's right behind you, your brain screams 'go faster!' Resist it. Trust your pace, hit your marks. Consistent driving under pressure is the hallmark of a champion."],quiz:[{question:"Target lap time spread over a stint?",options:["0.3-0.5 seconds","1-2 seconds","2-3 seconds","Doesn't matter if fastest lap is quick"],correct:0},{question:"Driving at 95% achieves?",options:["Nothing, always slow","Consistent laps with zero mistakes","Always last","Overheated tires"],correct:1},{question:"The 10-lap challenge?",options:["10 laps max speed","Record 10 laps, remove best/worst, minimize spread","10 laps no brakes","10 laps no assists"],correct:1}]},
+{id:"m-i-2",title:"Race Day Routine",desc:"Prepare like a pro to perform like a pro.",videoUrl:"",content:["Professional drivers have precise pre-race routines. Sim racers should too.","**30 min before — warm-up**: 5-10 laps in practice. Don't push for fast times — dial in braking points and remind muscle memory. Check tire pressures for current conditions.","**15 min before — setup check**: Verify controller settings, camera, HUD layout. Confirm fuel calculation. Check weather forecast. Set pit strategy.","**5 min before — mental preparation**: Close unnecessary apps. Phone on silent. Water within reach. Take 3 deep breaths. Visualize the first 3 corners.","**On the grid — game plan**: If top 5, maintain position. Mid-pack, focus on survival. Back of grid, be patient — positions will come as others crash.","**Post-race — the debrief**: 2 minutes reviewing. What went well? What went wrong? One thing to improve. Write it down. This 2-minute habit is the fastest way to improve."],quiz:[{question:"When to start warm-up?",options:["5 minutes","30 minutes","1 hour","No warm-up needed"],correct:1},{question:"5 minutes before the race?",options:["Fast laps","Reduce distractions, mental preparation","Change setup","Watch track videos"],correct:1},{question:"Most valuable post-race habit?",options:["Queue next race","Complain about drivers","Review what went well + one thing to improve","Check rating"],correct:2}]}
+]},
+{level:"Expert",color:"#ef4444",chapters:[
+{id:"m-e-1",title:"Pressure Management & Flow State",desc:"Perform your best when the stakes are highest.",videoUrl:"",content:["Final laps of a close race. A championship round. An overtake for the podium. High-pressure moments separate good from great.","**Understanding pressure**: Pressure is about perception, not the situation. 'I must not lose this position' = enormous pressure. 'I'm going to drive my best lap' = focused energy. Same situation, different experience.","**The flow state**: A lap where everything clicks, time slows down, you nail every corner without conscious thought. Peak human performance. You can't force it, but create conditions: optimal challenge level, clear focus points, absence of self-judgment.","**Process over outcome**: Focus on what you control (braking points, lines, inputs) not what you can't (what the car behind does, your rating). When thinking about outcomes, redirect to process: 'next braking point at 100m.'","**The pressure paradox**: 'Don't make mistakes' almost guarantees you will. Your brain can't process negative instructions. Instead: positive, specific, process-focused commands — 'brake at 100m, smooth turn-in, late apex.'","**Building resilience**: Deliberately enter pressure situations — competitive lobbies, leagues, personal challenges. Each time you perform under pressure, regardless of result, you build neural pathways that make the next time easier.","**Recovery from mistakes**: The best drivers recover within one corner. Made a mistake in Turn 3? Reset focus for Turn 4. Time lost is gone; time you can save is what matters."],quiz:[{question:"What creates pressure?",options:["The situation itself","Your perception of the situation","Other drivers","The track"],correct:1},{question:"Best focus under pressure?",options:["Final result and rating","What the car behind does","Your process (braking points, lines)","Trying not to make mistakes"],correct:2},{question:"How to build pressure resilience?",options:["Avoid pressure entirely","Practice non-competitively only","Deliberately enter pressure situations and learn","No way to improve"],correct:2}]}
+]}
+]},
+{id:"data",title:"Data & Self-Analysis",icon:"📊",desc:"Read data, analyze performance, and target your weaknesses",levels:[
+{level:"Beginner",color:"#22c55e",chapters:[
+{id:"d-d-1",title:"Reading the MFD & HUD",desc:"Understand every piece of information your car gives you.",videoUrl:"",content:["ACC provides incredible real-time data through the MFD and HUD. Reading this while driving directly improves performance.","**HUD basics**: Customize to show: current tire temps (essential), pressures (critical), brake temps, fuel remaining, position info.","**MFD pages**: Cycle with D-pad. Key pages: **Tire page** (temps across each tire surface), **Electronics** (TC/ABS adjustable mid-race), **Fuel** (consumption/lap, laps remaining), **Pit Strategy** (set your pit stop).","**Tire temps — what to look for**: Ideal 75-95°C. Three readings per tire: inside, middle, outside. Should be within 5°C of each other. Inside much hotter = too much camber. Outside hotter = possible understeer.","**Electronics mid-race**: Start with TC 3-4, ABS 3-4 in dry. As tires wear, consider increasing TC by 1. In rain, increase TC to 5-7 and ABS to 4-5.","**Fuel monitoring**: Check every 5 laps. If using more than planned, lift and coast slightly into braking zones to save fuel.","**Delta bar**: Green = faster than reference lap, red = slower. Use to gauge pace but don't obsess — consistent reds might mean traffic, not slow driving."],quiz:[{question:"Ideal tire temperatures?",options:["50-65°C","75-95°C","100-120°C","130-150°C"],correct:1},{question:"If tire inside is much hotter than outside?",options:["Too little camber","Too much camber","Too high pressure","Wrong compound"],correct:1},{question:"Consuming more fuel than planned?",options:["Push harder","Lift and coast into braking zones","Pit immediately","Ignore it"],correct:1}]},
+{id:"d-d-2",title:"Understanding Your Lap Times",desc:"Break down your performance sector by sector.",videoUrl:"",content:["A lap time is just a number. What matters is understanding what's behind it.","**Sector analysis**: ACC divides tracks into 3 sectors. Compare your sectors to your personal best — where are you losing time? That's your focus area. A driver 0.3s off in Sector 2 should practice those corners specifically.","**Compound effect**: Losing 0.1s in 3 different corners = 0.3s per lap. Over 20 laps = 6 seconds. The difference between a podium and P7. Small improvements add up faster than one big one.","**Optimal vs realistic pace**: Your best sectors combined = theoretical best. In a race, you'll be 0.5-1.0s slower due to fuel, traffic, tire management. Understanding this gap sets realistic expectations.","**Corner-by-corner**: For each corner, ask: Am I losing time on entry (braking too early)? Mid-corner (wrong line)? Exit (poor traction)? The answer tells you exactly what to practice.","**Benchmarking**: Find fast YouTube laps for your car/track. Watch inputs, lines, braking points. Compare mentally sector by sector. Where are the biggest differences? That's your roadmap.","**Tracking progress**: Keep a simple log — date, car, conditions, best time. Over months, you'll see tangible progress and know which tracks need more work."],quiz:[{question:"What does sector analysis reveal?",options:["Overall pace","Exactly which parts you're losing time","How fast others are","Fuel consumption"],correct:1},{question:"How much slower should race pace be vs theoretical best?",options:["Exactly the same","0.5-1.0 seconds slower","3-5 seconds slower","Unpredictable"],correct:1},{question:"Fastest way to improve lap time?",options:["One big gain in one corner","Small improvements across multiple areas","Faster top speed","Better reaction time"],correct:1}]}
+]},
+{level:"Intermediate",color:"#f59e0b",chapters:[
+{id:"d-i-1",title:"Identifying & Fixing Weaknesses",desc:"Diagnose problems and create targeted solutions.",videoUrl:"",content:["Every driver has weaknesses. Fast ones know theirs and work on them systematically.","**Common weaknesses checklist**: Rate yourself honestly: **Braking** (lock up? too early? trail braking?), **Entry** (turn in early/late? wrong speed?), **Mid-corner** (wrong line? too much steering?), **Exit** (wheelspin? too cautious?), **Consistency** (can you repeat your pace?).","**Video review**: Record your session. Watch it focusing on ONE thing at a time. First watch: braking only. Second: steering. Third: throttle. Focused review reveals patterns invisible while driving.","**Problem-solution pairs**: Chronic entry understeer → carrying too much speed. Exit oversteer → throttle too aggressive. Inconsistent times → inconsistent braking points (mental focus issue).","**One-focus practice**: Don't fix everything at once. Choose ONE weakness, spend an entire session on it. If it's trail braking, ignore lap time — focus exclusively on the brake-to-turn transition.","**Practice plan**: Based on your diagnosis, create a weekly plan. Monday: trail braking. Wednesday: corner exits. Friday: 10-lap consistency challenge. Structured practice is infinitely more productive than 'just lapping.'","**The feedback loop**: After each session, note what improved and what needs work. Identify → practice → evaluate → refocus. This is how professionals develop."],quiz:[{question:"Most valuable skill for improvement?",options:["Natural talent","Best equipment","Self-diagnosis of weaknesses","Following fast setups"],correct:2},{question:"How to review driving video?",options:["Watch everything at once","Focus on ONE aspect per viewing","Only watch crashes","Watch at 2x speed"],correct:1},{question:"One-focus practice method?",options:["Practice one track forever","Work on ONE weakness per session","Drive one lap and analyze","One practice per week"],correct:1}]}
+]},
+{level:"Expert",color:"#ef4444",chapters:[
+{id:"d-e-1",title:"Creating Your Improvement Plan",desc:"Design a systematic program to reach your goals.",videoUrl:"",content:["At this level, random practice won't cut it. You need a structured, goal-oriented improvement plan.","**SMART goals**: Not 'I want to be faster.' Instead: 'Reduce Spa time from 2:19 to 2:18 within 4 weeks' or 'Consistency spread under 0.4 seconds over 10 laps at Monza.'","**Skill hierarchy (by impact)**: 1. Braking points and technique (biggest gain), 2. Racing line and corner geometry, 3. Throttle application on exit, 4. Car setup, 5. Race strategy, 6. Racecraft. Focus practice on the top first.","**Weekly structure**: 2 sessions of focused technique (30 min), 1 race simulation (full distance with pit stops), 1 track learning (new/weak circuit), 1 competitive session (online race/league). Rest days are important — brain consolidates learning during rest.","**Measuring progress**: Track weekly: best lap per track, average race pace, consistency spread, SA rating, finishing positions. Graph them. When a metric plateaus, change your approach.","**The plateau breaker**: Hit a plateau? Try: learning a new track (builds general skills), driving a different car (changes perspective), comparing line-by-line with faster drivers, or taking a 3-4 day break.","**The long game**: A driver improving 0.1s per week at a track improves 5 seconds over a year — mid-pack to front-runner. Be patient, trust the process, celebrate small wins. Every tenth is earned through deliberate practice."],quiz:[{question:"Most effective type of goal?",options:["'Be faster'","'Reduce Spa time from 2:19 to 2:18 in 4 weeks'","'Win every race'","'Higher SA rating'"],correct:1},{question:"Biggest impact on lap time?",options:["Car setup","Racecraft","Braking points and technique","Race strategy"],correct:2},{question:"When you hit a plateau?",options:["Practice same thing harder","Try something different: new track, different car, or break","Quit","Only do online races"],correct:1}]}
+]}
+]}
+];
+const loadData = () => {
+  try { const d = localStorage.getItem(DATA_KEY); return d ? JSON.parse(d) : null; } catch { return null; }
+};
+const saveData = (data) => {
+  try { localStorage.setItem(DATA_KEY, JSON.stringify(data)); return true; } catch { return false; }
+};
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+// ─── TOAST ────────────────────────────────────────────────────
+function Toast({ message, type, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+  return <div className={`toast toast-${type}`}>{type === "success" ? "✓" : "✗"} {message}</div>;
+}
+
+// ─── APP ──────────────────────────────────────────────────────
+function AdminApp() {
+  const [authUser, setAuthUser] = useState(undefined);
+  const [courses, setCourses] = useState(() => loadData() || JSON.parse(JSON.stringify(DEFAULT_COURSES)));
+  const [selected, setSelected] = useState({ type:"dashboard" });
+  const [toast, setToast] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+
+  useEffect(() => {
+    sb.auth.getSession().then(({data:{session}})=>{setAuthUser(session?.user||null)});
+    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setAuthUser(session?.user||null)});
+    return()=>subscription.unsubscribe();
+  }, []);
+
+  // Auth gate: must be logged in with admin email
+  if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Chargement...</div></div></div>;
+  if (authUser === null || authUser.email !== ADMIN_EMAIL) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif",padding:20}}>
+      <div style={{maxWidth:380,width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔒</div><div style={{fontSize:20,fontWeight:700}}>Admin Panel</div><div style={{fontSize:12,color:"#9294a0",marginTop:4}}>Connexion requise — accès réservé à l'administrateur</div></div>
+        <div style={{background:"#16171c",border:"1px solid #2a2b33",borderRadius:12,padding:24}}>
+          {loginErr && <div style={{color:"#ef4444",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#ef444415",borderRadius:6}}>{loginErr}</div>}
+          {authUser && authUser.email !== ADMIN_EMAIL && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} n'est pas autorisé. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Se déconnecter</button></div>}
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:10}} type="email" placeholder="Email admin" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/>
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:12}} type="password" placeholder="Mot de passe" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={doLogin}>Se connecter</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  function doLogin(){
+    setLoginErr("");
+    sb.auth.signInWithPassword({email:loginEmail,password:loginPass}).then(({error})=>{if(error)setLoginErr(error.message)});
+  }
+
+  const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
+
+  const save = useCallback(() => {
+    if (saveData(courses)) {
+      showToast("Modifications enregistrées !");
+      setHasChanges(false);
+    } else {
+      showToast("Erreur de sauvegarde", "error");
+    }
+  }, [courses]);
+
+  const updateCourses = (fn) => {
+    setCourses(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); return next; });
+    setHasChanges(true);
+  };
+
+  const nav = (sel) => { setSelected(sel); setSidebarOpen(false); };
+
+  // Count helpers
+  const totalChapters = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
+  const totalQuiz = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
+
+  return (
+    <div className="admin-layout">
+      {/* Sidebar */}
+      <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo"><span>⚙️</span><span>ACC Admin</span></div>
+          <div className="sidebar-sub">Gestion du contenu</div>
+        </div>
+        <div className="sidebar-nav">
+          <div className="nav-section">
+            <div className="nav-section-title">Navigation</div>
+            <button className={`nav-item ${selected.type==="dashboard"?"active":""}`} onClick={()=>nav({type:"dashboard"})}>
+              <span className="nav-icon">📊</span> Dashboard
+            </button>
+            <button className={`nav-item ${selected.type==="users"?"active":""}`} onClick={()=>nav({type:"users"})}>
+              <span className="nav-icon">👥</span> Utilisateurs
+            </button>
+          </div>
+          {courses.map((course, ci) => (
+            <div key={course.id} className="nav-section">
+              <div className="nav-section-title">{course.icon} {course.title}</div>
+              <button className={`nav-item ${selected.type==="course"&&selected.ci===ci?"active":""}`} onClick={()=>nav({type:"course",ci})}>
+                <span className="nav-icon">📝</span> Infos du parcours
+              </button>
+              {course.levels.map((level, li) => (
+                <div key={li}>
+                  {level.chapters.map((ch, chi) => (
+                    <button key={ch.id} className={`nav-item ${selected.type==="chapter"&&selected.ci===ci&&selected.li===li&&selected.chi===chi?"active":""}`}
+                      onClick={()=>nav({type:"chapter",ci,li,chi})}>
+                      <span className="nav-icon"><span className="color-dot" style={{background:level.color,display:"inline-block"}}/></span>
+                      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ch.title}</span>
+                    </button>
+                  ))}
+                  <button className="nav-item" style={{color:"var(--accent)",fontSize:12}} onClick={() => {
+                    updateCourses(d => {
+                      d[ci].levels[li].chapters.push({ id:uid(), title:"Nouveau chapitre", desc:"Description...", videoUrl:"", content:["Contenu de la leçon..."], quiz:[] });
+                    });
+                    const newChi = course.levels[li].chapters.length; // will be length after push
+                    setTimeout(() => nav({type:"chapter",ci,li,chi:newChi}), 50);
+                  }}>
+                    <span className="nav-icon">+</span> Ajouter chapitre
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="nav-section">
+            <button className="nav-item" style={{color:"var(--accent)"}} onClick={() => {
+              updateCourses(d => {
+                d.push({ id:uid(), title:"Nouveau parcours", icon:"📚", desc:"Description du parcours", levels:[{level:"Débutant",color:"#22c55e",chapters:[]}] });
+              });
+            }}>
+              <span className="nav-icon">+</span> Nouveau parcours
+            </button>
+          </div>
+        </div>
+        <div className="sidebar-footer">
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={save}>
+            💾 {hasChanges ? "Enregistrer *" : "Enregistrer"}
+          </button>
+          <button className="btn btn-secondary" style={{width:"100%",justifyContent:"center"}} onClick={() => {
+            const json = JSON.stringify(courses, null, 2);
+            const blob = new Blob([json], {type:"application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "acc-coaching-data.json"; a.click();
+            URL.revokeObjectURL(url);
+            showToast("Export téléchargé !");
+          }}>
+            📥 Exporter JSON
+          </button>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main">
+        <div className="main-header">
+          <div>
+            <div className="main-title">
+              {selected.type === "dashboard" && "Dashboard"}
+              {selected.type === "users" && "Utilisateurs"}
+              {selected.type === "course" && courses[selected.ci]?.title}
+              {selected.type === "chapter" && courses[selected.ci]?.levels[selected.li]?.chapters[selected.chi]?.title}
+            </div>
+            <div className="main-subtitle">
+              {selected.type === "dashboard" && `${courses.length} parcours · ${totalChapters} chapitres · ${totalQuiz} questions`}
+              {selected.type === "users" && "Gestion des comptes et accès premium"}
+              {selected.type === "course" && "Paramètres du parcours"}
+              {selected.type === "chapter" && `${courses[selected.ci]?.title} › ${courses[selected.ci]?.levels[selected.li]?.level}`}
+            </div>
+          </div>
+          <div className="main-actions">
+            {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Non sauvé</span>}
+            <button className="btn btn-primary" onClick={save}>💾 Sauvegarder</button>
+          </div>
+        </div>
+        <div className="main-content">
+          {selected.type === "dashboard" && <DashboardView courses={courses} nav={nav} updateCourses={updateCourses} showToast={showToast}/>}
+          {selected.type === "users" && <UsersView showToast={showToast}/>}
+          {selected.type === "course" && <CourseEditor courses={courses} ci={selected.ci} updateCourses={updateCourses} nav={nav} showToast={showToast}/>}
+          {selected.type === "chapter" && <ChapterEditor courses={courses} ci={selected.ci} li={selected.li} chi={selected.chi} updateCourses={updateCourses} showToast={showToast}/>}
+        </div>
+      </div>
+
+      <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+      {toast && <Toast key={toast.key} message={toast.message} type={toast.type} onDone={() => setToast(null)}/>}
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+function DashboardView({ courses, nav, updateCourses, showToast }) {
+  const fileRef = useRef();
+  const totalCh = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
+  const totalQ = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
+
+  const handleImport = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data) && data[0]?.levels) {
+          updateCourses(() => {}); // trigger change
+          localStorage.setItem("acc-coaching-courses", JSON.stringify(data));
+          window.location.reload();
+        } else { showToast("Format JSON invalide", "error"); }
+      } catch { showToast("Erreur de lecture JSON", "error"); }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{courses.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PARCOURS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalCh}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>CHAPITRES</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{totalQ}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>QUESTIONS QUIZ</div></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><div className="card-title">📚 Parcours</div>
+          <button className="btn btn-sm btn-primary" onClick={() => {
+            updateCourses(d => d.push({id:uid(),title:"Nouveau parcours",icon:"📚",desc:"Description",levels:[{level:"Débutant",color:"#22c55e",chapters:[]}]}));
+          }}>+ Ajouter</button>
+        </div>
+        <div className="card-body">
+          {courses.map((c, ci) => (
+            <div key={c.id} className="list-item">
+              <span style={{fontSize:24}}>{c.icon}</span>
+              <div className="item-info">
+                <div className="item-title">{c.title}</div>
+                <div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres · {c.levels.length} niveaux</div>
+              </div>
+              <div className="item-actions">
+                <button className="btn-icon" onClick={()=>nav({type:"course",ci})} title="Modifier">✏️</button>
+                <button className="btn-icon" onClick={()=>{if(confirm("Supprimer ce parcours ?"))updateCourses(d=>d.splice(ci,1))}} title="Supprimer">🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:16}}>
+        <div className="card-header"><div className="card-title">🔧 Outils</div></div>
+        <div className="card-body" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Importer JSON</button>
+          <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={handleImport}/>
+          <button className="btn btn-secondary" onClick={() => {
+            const json = JSON.stringify(courses, null, 2);
+            const blob = new Blob([json], {type:"application/json"});
+            const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href=url; a.download="acc-coaching-data.json"; a.click();
+          }}>📥 Exporter JSON</button>
+          <button className="btn btn-danger" onClick={() => {
+            if (confirm("⚠️ Réinitialiser TOUT le contenu aux valeurs par défaut ? Cette action est irréversible.")) {
+              localStorage.removeItem(DATA_KEY);
+              localStorage.removeItem(PROGRESS_KEY);
+              window.location.reload();
+            }
+          }}>🔄 Réinitialiser tout</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COURSE EDITOR ────────────────────────────────────────────
+function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
+  const course = courses[ci];
+  if (!course) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Parcours introuvable</div></div>;
+
+  const ICONS = ["🏎️","⚔️","🔧","🏁","🎯","⚡","🛞","🌧️","🏆","📚","💡","🎮"];
+  const COLORS = ["#22c55e","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899","#06b6d4","#f97316"];
+
+  return (
+    <div>
+      <div className="card">
+        <div className="card-header"><div className="card-title">Informations du parcours</div></div>
+        <div className="card-body">
+          <div className="form-group">
+            <label className="form-label">Icône</label>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {ICONS.map(ic => (
+                <button key={ic} style={{fontSize:24,width:40,height:40,borderRadius:8,border:course.icon===ic?"2px solid var(--accent)":"1px solid var(--border)",background:course.icon===ic?"var(--accent)15":"var(--bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
+                  onClick={()=>updateCourses(d=>{d[ci].icon=ic})}>{ic}</button>
+              ))}
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Titre du parcours</label>
+            <input className="form-input" value={course.title} onChange={e=>updateCourses(d=>{d[ci].title=e.target.value})} placeholder="Ex: Pilotage Pur"/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <input className="form-input" value={course.desc} onChange={e=>updateCourses(d=>{d[ci].desc=e.target.value})} placeholder="Description courte du parcours"/>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:16}}>
+        <div className="card-header">
+          <div className="card-title">📊 Niveaux ({course.levels.length})</div>
+          <button className="btn btn-sm btn-primary" onClick={()=>updateCourses(d=>{d[ci].levels.push({level:"Nouveau niveau",color:"#3b82f6",chapters:[]})})}>+ Ajouter niveau</button>
+        </div>
+        <div className="card-body">
+          {course.levels.map((level, li) => (
+            <div key={li} className="list-item" style={{borderLeft:`3px solid ${level.color}`}}>
+              <div className="item-info">
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input className="form-input" style={{padding:"4px 8px",width:180,fontSize:13}} value={level.level} onChange={e=>updateCourses(d=>{d[ci].levels[li].level=e.target.value})}/>
+                  <div style={{display:"flex",gap:3}}>
+                    {COLORS.map(col => (
+                      <button key={col} style={{width:18,height:18,borderRadius:"50%",background:col,border:level.color===col?"2px solid #fff":"1px solid #333",cursor:"pointer"}}
+                        onClick={()=>updateCourses(d=>{d[ci].levels[li].color=col})}/>
+                    ))}
+                  </div>
+                </div>
+                <div className="item-sub">{level.chapters.length} chapitres</div>
+              </div>
+              <div className="item-actions">
+                {li > 0 && <button className="btn-icon" title="Monter" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li-1];d[ci].levels[li-1]=t})}>↑</button>}
+                {li < course.levels.length-1 && <button className="btn-icon" title="Descendre" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li+1];d[ci].levels[li+1]=t})}>↓</button>}
+                <button className="btn-icon" title="Supprimer" onClick={()=>{if(confirm("Supprimer ce niveau et tous ses chapitres ?"))updateCourses(d=>{d[ci].levels.splice(li,1)})}}>🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginTop:20}}>
+        <button className="btn btn-danger" onClick={()=>{if(confirm("Supprimer le parcours \""+course.title+"\" ?")) { updateCourses(d=>d.splice(ci,1)); nav({type:"dashboard"}); }}}>🗑️ Supprimer ce parcours</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── CHAPTER EDITOR ───────────────────────────────────────────
+function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
+  const [tab, setTab] = useState("info");
+  const chapter = courses[ci]?.levels[li]?.chapters[chi];
+  if (!chapter) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Chapitre introuvable</div></div>;
+
+  const update = (fn) => updateCourses(d => fn(d[ci].levels[li].chapters[chi]));
+
+  return (
+    <div>
+      <div className="status-bar">
+        ✓ Chapitre : {chapter.content.filter(b => typeof b === "string" || (typeof b === "object" && b.type !== "image")).length} textes · {chapter.content.filter(b => typeof b === "object" && b.type === "image").length} images · {chapter.quiz.length} questions quiz · Vidéo : {chapter.videoUrl ? "✓" : "✗"}
+      </div>
+
+      <div className="tabs">
+        <button className={`tab ${tab==="info"?"active":""}`} onClick={()=>setTab("info")}>ℹ️ Infos</button>
+        <button className={`tab ${tab==="content"?"active":""}`} onClick={()=>setTab("content")}>📖 Contenu</button>
+        <button className={`tab ${tab==="video"?"active":""}`} onClick={()=>setTab("video")}>🎬 Vidéo</button>
+        <button className={`tab ${tab==="quiz"?"active":""}`} onClick={()=>setTab("quiz")}>✅ Quiz ({chapter.quiz.length})</button>
+        <button className={`tab ${tab==="danger"?"active":""}`} onClick={()=>setTab("danger")}>⚠️</button>
+      </div>
+
+      {/* INFO TAB */}
+      {tab === "info" && (
+        <div className="card">
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">Titre du chapitre</label>
+              <input className="form-input" value={chapter.title} onChange={e=>update(ch=>{ch.title=e.target.value})} placeholder="Ex: Les bases du freinage"/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description courte</label>
+              <input className="form-input" value={chapter.desc} onChange={e=>update(ch=>{ch.desc=e.target.value})} placeholder="Ex: Apprends à freiner efficacement"/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Identifiant unique</label>
+              <input className="form-input" value={chapter.id} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text3)"}} readOnly/>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTENT TAB */}
+      {tab === "content" && (
+        <div>
+          <div className="para-hint">💡 Utilise **texte** pour mettre du texte en gras/rouge. Tu peux insérer des images entre les blocs de texte.</div>
+          {chapter.content.map((block, pi) => {
+            const isImage = typeof block === "object" && block.type === "image";
+            const textVal = typeof block === "string" ? block : (block.value || "");
+            return (
+            <div key={pi} className="para-block">
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                <span style={{fontSize:11,color:"var(--text3)",fontFamily:"'JetBrains Mono',monospace"}}>{isImage ? "🖼️" : "§"}{pi+1}</span>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:isImage?"var(--blue)22":"var(--surface3)",color:isImage?"var(--blue)":"var(--text3)"}}>{isImage?"Image":"Texte"}</span>
+                <div style={{flex:1}}/>
+                {pi > 0 && <button className="btn-icon btn-sm" title="Monter" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi-1];ch.content[pi-1]=t})}>↑</button>}
+                {pi < chapter.content.length-1 && <button className="btn-icon btn-sm" title="Descendre" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi+1];ch.content[pi+1]=t})}>↓</button>}
+                <button className="btn-icon btn-sm" style={{color:"var(--red)"}} title="Supprimer" onClick={()=>update(ch=>{ch.content.splice(pi,1)})}>✗</button>
+              </div>
+              {isImage ? (
+                <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12}}>
+                  <div className="form-group" style={{marginBottom:8}}>
+                    <label className="form-label">URL de l'image</label>
+                    <input className="form-input" value={block.url||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],url:e.target.value}})} placeholder="https://example.com/image.jpg"/>
+                  </div>
+                  <div className="form-group" style={{marginBottom:0}}>
+                    <label className="form-label">Légende (optionnel)</label>
+                    <input className="form-input" value={block.caption||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],caption:e.target.value}})} placeholder="Description de l'image..."/>
+                  </div>
+                  {block.url && <div style={{marginTop:8,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={block.url} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}} alt={block.caption||""}/></div>}
+                </div>
+              ) : (
+                <textarea className="form-input" value={textVal} rows={3} onChange={e=>update(ch=>{ch.content[pi]=e.target.value})} placeholder="Contenu du paragraphe..."/>
+              )}
+            </div>
+          )})}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>+ Ajouter texte</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--blue)30",color:"var(--blue)"}} onClick={()=>update(ch=>{ch.content.push({type:"image",url:"",caption:""})})}>🖼️ Ajouter image</button>
+          </div>
+        </div>
+      )}
+
+      {/* VIDEO TAB */}
+      {tab === "video" && (
+        <div className="card">
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">URL de la vidéo YouTube (embed)</label>
+              <input className="form-input" value={chapter.videoUrl} onChange={e=>update(ch=>{ch.videoUrl=e.target.value})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
+              <div className="para-hint" style={{marginTop:8}}>
+                Pour obtenir le lien embed : va sur YouTube → Partager → Intégrer → copie le lien src="https://www.youtube.com/embed/..."
+              </div>
+            </div>
+            {chapter.videoUrl && (
+              <div style={{marginTop:12}}>
+                <label className="form-label">Aperçu</label>
+                <div style={{borderRadius:8,overflow:"hidden",border:"1px solid var(--border)"}}>
+                  <iframe src={chapter.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* QUIZ TAB */}
+      {tab === "quiz" && (
+        <div>
+          {chapter.quiz.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">✅</div>
+              <div className="empty-text">Aucune question</div>
+              <div className="empty-sub">Ajoute des questions pour valider ce chapitre</div>
+            </div>
+          )}
+          {chapter.quiz.map((q, qi) => (
+            <div key={qi} className="card" style={{marginBottom:12}}>
+              <div className="card-header">
+                <div className="card-title">
+                  <span style={{color:"var(--accent)",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>Q{qi+1}</span>
+                  Question {qi+1}
+                </div>
+                <div style={{display:"flex",gap:4}}>
+                  {qi > 0 && <button className="btn-icon btn-sm" onClick={()=>update(ch=>{const t=ch.quiz[qi];ch.quiz[qi]=ch.quiz[qi-1];ch.quiz[qi-1]=t})}>↑</button>}
+                  {qi < chapter.quiz.length-1 && <button className="btn-icon btn-sm" onClick={()=>update(ch=>{const t=ch.quiz[qi];ch.quiz[qi]=ch.quiz[qi+1];ch.quiz[qi+1]=t})}>↓</button>}
+                  <button className="btn-icon btn-sm" style={{color:"var(--red)"}} onClick={()=>update(ch=>{ch.quiz.splice(qi,1)})}>🗑️</button>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="form-group">
+                  <label className="form-label">Question</label>
+                  <input className="form-input" value={q.question} onChange={e=>update(ch=>{ch.quiz[qi].question=e.target.value})} placeholder="Pose ta question ici..."/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">🖼️ Image de la question (optionnel)</label>
+                  <input className="form-input" value={q.image||""} onChange={e=>update(ch=>{ch.quiz[qi].image=e.target.value||undefined})} placeholder="https://example.com/image.jpg"/>
+                  {q.image && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={q.image} style={{width:"100%",maxHeight:150,objectFit:"cover",display:"block"}} alt=""/></div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">🎬 Vidéo de la question (optionnel)</label>
+                  <input className="form-input" value={q.video||""} onChange={e=>update(ch=>{ch.quiz[qi].video=e.target.value||undefined})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
+                  <div className="para-hint" style={{marginTop:4}}>Lien embed YouTube uniquement. Ex: https://www.youtube.com/embed/abc123</div>
+                  {q.video && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><iframe src={q.video} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>}
+                </div>
+                <label className="form-label">Options (clique le cercle vert pour marquer la bonne réponse)</label>
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="quiz-option-row">
+                    <span style={{fontSize:11,color:"var(--text3)",width:16,textAlign:"center",fontWeight:600}}>{String.fromCharCode(65+oi)}</span>
+                    <input className="form-input" style={{marginBottom:0}} value={opt} onChange={e=>update(ch=>{ch.quiz[qi].options[oi]=e.target.value})} placeholder={`Option ${String.fromCharCode(65+oi)}`}/>
+                    <button className={`quiz-option-correct ${q.correct===oi?"is-correct":""}`} onClick={()=>update(ch=>{ch.quiz[qi].correct=oi})} title="Bonne réponse">✓</button>
+                    {q.options.length > 2 && <button className="btn-icon btn-sm" style={{color:"var(--red)"}} onClick={()=>update(ch=>{ch.quiz[qi].options.splice(oi,1);if(ch.quiz[qi].correct>=oi&&ch.quiz[qi].correct>0)ch.quiz[qi].correct--})}>✗</button>}
+                  </div>
+                ))}
+                {q.options.length < 6 && (
+                  <button className="btn btn-ghost btn-sm" style={{marginTop:4}} onClick={()=>update(ch=>{ch.quiz[qi].options.push("")})}>+ Ajouter option</button>
+                )}
+              </div>
+            </div>
+          ))}
+          <button className="btn btn-primary" style={{marginTop:8}} onClick={()=>update(ch=>{ch.quiz.push({question:"",options:["","","",""],correct:0})})}>+ Ajouter une question</button>
+        </div>
+      )}
+
+      {/* DANGER TAB */}
+      {tab === "danger" && (
+        <div className="card">
+          <div className="card-header"><div className="card-title" style={{color:"var(--red)"}}>⚠️ Zone de danger</div></div>
+          <div className="card-body">
+            <p style={{fontSize:13,color:"var(--text2)",marginBottom:16}}>Ces actions sont irréversibles. Fais attention !</p>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button className="btn btn-danger" onClick={() => {
+                if (confirm("Supprimer le chapitre \""+chapter.title+"\" ?\nCette action est irréversible.")) {
+                  updateCourses(d => { d[ci].levels[li].chapters.splice(chi, 1); });
+                  showToast("Chapitre supprimé");
+                }
+              }}>🗑️ Supprimer ce chapitre</button>
+              <button className="btn btn-secondary" onClick={() => {
+                updateCourses(d => {
+                  const copy = JSON.parse(JSON.stringify(chapter));
+                  copy.id = uid();
+                  copy.title = copy.title + " (copie)";
+                  d[ci].levels[li].chapters.splice(chi+1, 0, copy);
+                });
+                showToast("Chapitre dupliqué !");
+              }}>📋 Dupliquer ce chapitre</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── USERS VIEW ───────────────────────────────────────────────
+function UsersView({ showToast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await sb.from("profiles").select("id, display_name, email, premium, created_at, last_active");
+      if (data) setUsers(data.sort((a, b) => new Date(b.last_active || 0) - new Date(a.last_active || 0)));
+      setLoading(false);
+    })();
+  }, []);
+
+  const togglePremium = async (uid, current) => {
+    await sb.from("profiles").update({ premium: !current }).eq("id", uid);
+    setUsers(prev => prev.map(u => u.id === uid ? { ...u, premium: !current } : u));
+    showToast(!current ? "Premium activé !" : "Premium retiré");
+  };
+
+  if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Chargement des utilisateurs...</div>;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{users.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{users.filter(u=>u.premium).length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><div className="card-title">👥 Tous les utilisateurs</div></div>
+        <div className="card-body">
+          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> :
+          users.map(u => (
+            <div key={u.id} className="list-item">
+              <div style={{width:36,height:36,borderRadius:"50%",background:u.premium?"var(--yellow)22":"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{u.premium?"👑":"👤"}</div>
+              <div className="item-info">
+                <div className="item-title">{u.display_name || "Sans nom"}</div>
+                <div className="item-sub">{u.email} · Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</div>
+              </div>
+              <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>
+                {u.premium ? "Retirer Premium" : "👑 Premium"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById("root")).render(<AdminApp/>);
+</script>
+</body>
+</html>
