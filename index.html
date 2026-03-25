@@ -11,7 +11,7 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html,body,#root{min-height:100vh;background:#0a0a0a}
-    body{font-family:'Rajdhani','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+    body{font-family:'Rajdhani','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;font-size:15px}
     ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
     ::selection{background:#e11d4844;color:#fff}
     img.lesson-img{width:100%;border-radius:10px;border:1px solid #222;display:block}
@@ -50,11 +50,25 @@
     @media(min-width:1600px){.scr{max-width:1440px;padding:40px 60px 40px}}
     /* Desktop font & element scaling */
     @media(min-width:1024px){
-      .pg-title{font-size:32px!important}
-      .course-card-d{padding:20px!important}
+      body{font-size:16px}
+      .pg-title{font-size:34px!important}
+      .course-card-d{padding:22px!important}
       .course-card-d .c-icon{width:56px!important;height:56px!important;font-size:36px!important}
-      .lesson-para{font-size:16px!important;line-height:1.85!important}
-      .ch-card-d{padding:18px 20px!important}
+      .ch-card-d{padding:18px 22px!important}
+    }
+    @media(min-width:1400px){body{font-size:17px}}
+    /* Rich content blocks */
+    .block-text{font-size:15px;line-height:1.8;color:#ccc;margin-bottom:18px}
+    .block-heading{font-size:20px;font-weight:700;color:#e2e2e2;margin-bottom:10px;margin-top:24px}
+    .block-small{font-size:13px;line-height:1.7;color:#999;margin-bottom:14px}
+    .block-large{font-size:17px;line-height:1.85;color:#ddd;margin-bottom:20px}
+    .block-callout{font-size:15px;line-height:1.7;color:#ccc;margin-bottom:18px;padding:14px 18px;background:#111;border-left:3px solid #e11d48;border-radius:0 8px 8px 0}
+    @media(min-width:1024px){
+      .block-text{font-size:16px;line-height:1.85}
+      .block-heading{font-size:24px}
+      .block-small{font-size:14px}
+      .block-large{font-size:19px;line-height:1.9}
+      .block-callout{font-size:16px}
     }
     /* Desktop stat grid */
     .stat-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -191,9 +205,18 @@ const NvL=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.6
 const NvP=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 
 const renderBlock=(block,i)=>{
-  if(typeof block==="object"&&block.type==="image")return<div key={i} style={{marginBottom:16}}><img className="lesson-img" src={block.url} alt={block.caption||""}/>{block.caption&&<div style={{fontSize:12,color:"#666",marginTop:6,textAlign:"center"}}>{block.caption}</div>}</div>;
-  const text=typeof block==="string"?block:(block.value||"");
-  return<div key={i} style={S.para}>{text.split("**").map((p,j)=>j%2===1?<span key={j} style={S.bold}>{p}</span>:<span key={j}>{p}</span>)}</div>;
+  // Image block
+  if(typeof block==="object"&&block.type==="image")return<div key={i} style={{marginBottom:18}}><img className="lesson-img" src={block.url} alt={block.caption||""}/>{block.caption&&<div style={{fontSize:13,color:"#666",marginTop:6,textAlign:"center"}}>{block.caption}</div>}</div>;
+  // Heading block
+  if(typeof block==="object"&&block.type==="heading")return<div key={i} className="block-heading">{block.value||""}</div>;
+  // Callout block
+  if(typeof block==="object"&&block.type==="callout"){const t=block.value||"";return<div key={i} className="block-callout">{t.split("**").map((p,j)=>j%2===1?<span key={j} style={{color:"#e11d48",fontWeight:700}}>{p}</span>:<span key={j}>{p}</span>)}</div>}
+  // Text block (with optional size: small, normal, large)
+  const isObj=typeof block==="object";
+  const text=isObj?(block.value||""):(typeof block==="string"?block:"");
+  const size=isObj?block.size:"normal";
+  const cls=size==="small"?"block-small":size==="large"?"block-large":"block-text";
+  return<div key={i} className={cls}>{text.split("**").map((p,j)=>j%2===1?<span key={j} style={{color:"#e11d48",fontWeight:700}}>{p}</span>:<span key={j}>{p}</span>)}</div>;
 };
 
 // ━━━ STYLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
