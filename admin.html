@@ -600,15 +600,25 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
       {/* CONTENT TAB */}
       {tab === "content" && (
         <div>
-          <div className="para-hint">💡 Utilise **texte** pour mettre du texte en gras/rouge. Tu peux insérer des images entre les blocs de texte.</div>
+          <div className="para-hint">💡 **texte** = gras rouge. Types : Texte (3 tailles), Titre, Encadré, Image. Réordonne librement.</div>
           {chapter.content.map((block, pi) => {
-            const isImage = typeof block === "object" && block.type === "image";
+            const bType = typeof block === "object" ? (block.type || "text") : "text";
+            const isImage = bType === "image";
+            const isHeading = bType === "heading";
+            const isCallout = bType === "callout";
+            const isText = !isImage && !isHeading && !isCallout;
             const textVal = typeof block === "string" ? block : (block.value || "");
+            const size = typeof block === "object" ? (block.size || "normal") : "normal";
+            const typeLabels = {text:"📝 Texte",heading:"🔤 Titre",callout:"💡 Encadré",image:"🖼️ Image"};
+            const typeColors = {text:"var(--text3)",heading:"var(--accent)",callout:"var(--yellow)",image:"var(--blue)"};
             return (
             <div key={pi} className="para-block">
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                <span style={{fontSize:11,color:"var(--text3)",fontFamily:"'JetBrains Mono',monospace"}}>{isImage ? "🖼️" : "§"}{pi+1}</span>
-                <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:isImage?"var(--blue)22":"var(--surface3)",color:isImage?"var(--blue)":"var(--text3)"}}>{isImage?"Image":"Texte"}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"var(--text3)",fontFamily:"'JetBrains Mono',monospace"}}>{pi+1}</span>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:typeColors[bType]+"22",color:typeColors[bType]}}>{typeLabels[bType]||bType}</span>
+                {isText && <select style={{fontSize:10,padding:"2px 6px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,color:"var(--text2)"}} value={size} onChange={e=>update(ch=>{ch.content[pi]=typeof ch.content[pi]==="string"?{type:"text",value:ch.content[pi],size:e.target.value}:{...ch.content[pi],size:e.target.value}})}>
+                  <option value="small">Petit</option><option value="normal">Normal</option><option value="large">Grand</option>
+                </select>}
                 <div style={{flex:1}}/>
                 {pi > 0 && <button className="btn-icon btn-sm" title="Monter" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi-1];ch.content[pi-1]=t})}>↑</button>}
                 {pi < chapter.content.length-1 && <button className="btn-icon btn-sm" title="Descendre" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi+1];ch.content[pi+1]=t})}>↓</button>}
@@ -626,14 +636,21 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
                   </div>
                   {block.url && <div style={{marginTop:8,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={block.url} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}} alt={block.caption||""}/></div>}
                 </div>
+              ) : isHeading ? (
+                <input className="form-input" style={{fontSize:18,fontWeight:700}} value={textVal} onChange={e=>update(ch=>{ch.content[pi]={type:"heading",value:e.target.value}})} placeholder="Titre de section..."/>
               ) : (
-                <textarea className="form-input" value={textVal} rows={3} onChange={e=>update(ch=>{ch.content[pi]=e.target.value})} placeholder="Contenu du paragraphe..."/>
+                <textarea className="form-input" style={{fontSize:isCallout?13:size==="large"?16:size==="small"?12:14}} value={textVal} rows={3} onChange={e=>update(ch=>{
+                  if(typeof ch.content[pi]==="string"){ch.content[pi]=isCallout?{type:"callout",value:e.target.value}:e.target.value}
+                  else{ch.content[pi]={...ch.content[pi],value:e.target.value}}
+                })} placeholder={isCallout?"Texte de l'encadré...":"Contenu du paragraphe..."}/>
               )}
             </div>
           )})}
-          <div style={{display:"flex",gap:8,marginTop:8}}>
-            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>+ Ajouter texte</button>
-            <button className="btn btn-secondary" style={{borderColor:"var(--blue)30",color:"var(--blue)"}} onClick={()=>update(ch=>{ch.content.push({type:"image",url:"",caption:""})})}>🖼️ Ajouter image</button>
+          <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
+            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>📝 Texte</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--accent)30",color:"var(--accent)"}} onClick={()=>update(ch=>{ch.content.push({type:"heading",value:""})})}>🔤 Titre</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--yellow)30",color:"var(--yellow)"}} onClick={()=>update(ch=>{ch.content.push({type:"callout",value:""})})}>💡 Encadré</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--blue)30",color:"var(--blue)"}} onClick={()=>update(ch=>{ch.content.push({type:"image",url:"",caption:""})})}>🖼️ Image</button>
           </div>
         </div>
       )}
