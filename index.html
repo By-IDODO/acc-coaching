@@ -105,7 +105,13 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ━━━ DATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const loadCourses=()=>{try{const c=localStorage.getItem("acc-coaching-courses");if(c)return JSON.parse(c)}catch(e){}return null};
+// Load from localStorage cache first (instant), then update from Supabase
+const loadLocal=(key)=>{try{const c=localStorage.getItem(key);if(c)return JSON.parse(c)}catch(e){}return null};
+const saveLocal=(key,data)=>{try{localStorage.setItem(key,JSON.stringify(data))}catch(e){}};
+
+// Supabase content helpers
+const sbLoadContent=async(key)=>{try{const{data}=await sb.from("app_content").select("data").eq("key",key).single();return data?.data||null}catch(e){return null}};
+const sbSaveContent=async(key,data)=>{await sb.from("app_content").upsert({key,data,updated_at:new Date().toISOString()})};
 const DEFAULT_COURSES=[
 {id:"pilotage",title:"Pure Driving",icon:"🏎️",desc:"Master the fundamentals of driving on ACC Console",levels:[
 {level:"Beginner",color:"#22c55e",chapters:[
@@ -175,9 +181,20 @@ const DEFAULT_COURSES=[
 {id:"d-e-1",title:"Creating Your Improvement Plan",desc:"Design a systematic program to reach your goals.",videoUrl:"",content:["At this level, random practice won't cut it. You need a structured, goal-oriented improvement plan.","**SMART goals**: Not 'I want to be faster.' Instead: 'Reduce Spa time from 2:19 to 2:18 within 4 weeks' or 'Consistency spread under 0.4 seconds over 10 laps at Monza.'","**Skill hierarchy (by impact)**: 1. Braking points and technique (biggest gain), 2. Racing line and corner geometry, 3. Throttle application on exit, 4. Car setup, 5. Race strategy, 6. Racecraft. Focus practice on the top first.","**Weekly structure**: 2 sessions of focused technique (30 min), 1 race simulation (full distance with pit stops), 1 track learning (new/weak circuit), 1 competitive session (online race/league). Rest days are important — brain consolidates learning during rest.","**Measuring progress**: Track weekly: best lap per track, average race pace, consistency spread, SA rating, finishing positions. Graph them. When a metric plateaus, change your approach.","**The plateau breaker**: Hit a plateau? Try: learning a new track (builds general skills), driving a different car (changes perspective), comparing line-by-line with faster drivers, or taking a 3-4 day break.","**The long game**: A driver improving 0.1s per week at a track improves 5 seconds over a year — mid-pack to front-runner. Be patient, trust the process, celebrate small wins. Every tenth is earned through deliberate practice."],quiz:[{question:"Most effective type of goal?",options:["'Be faster'","'Reduce Spa time from 2:19 to 2:18 in 4 weeks'","'Win every race'","'Higher SA rating'"],correct:1},{question:"Biggest impact on lap time?",options:["Car setup","Racecraft","Braking points and technique","Race strategy"],correct:2},{question:"When you hit a plateau?",options:["Practice same thing harder","Try something different: new track, different car, or break","Quit","Only do online races"],correct:1}]}
 ]}
 ]}
-];const COURSES=loadCourses()||DEFAULT_COURSES;
+];
+// Start with local cache or defaults, will be updated from Supabase
+let COURSES=loadLocal("acc-coaching-courses")||DEFAULT_COURSES;
+let SETTINGS=loadLocal("acc-coaching-settings")||{};
+let COACH_DATA=SETTINGS.coaching||{title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach. We'll analyze your driving, work on specific techniques, and create a personalized improvement plan.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
+let HOME_LAYOUT=SETTINGS.homeLayout||["nextLesson","courses"];
 
-if(!localStorage.getItem("acc-coaching-courses")){try{localStorage.setItem("acc-coaching-courses",JSON.stringify(DEFAULT_COURSES))}catch(e){}}
+// Async: fetch latest from Supabase and update
+const refreshContent=async()=>{
+  const courses=await sbLoadContent("courses");
+  if(courses){COURSES=courses;saveLocal("acc-coaching-courses",courses)}
+  const settings=await sbLoadContent("settings");
+  if(settings){SETTINGS=settings;saveLocal("acc-coaching-settings",settings);COACH_DATA=settings.coaching||COACH_DATA;HOME_LAYOUT=settings.homeLayout||HOME_LAYOUT}
+};
 
 const defProg=()=>{const p={};COURSES.forEach(c=>c.levels.forEach(l=>l.chapters.forEach(ch=>{p[ch.id]={completed:false,quizScore:null,bestScore:null}})));return p};
 
@@ -313,6 +330,8 @@ function App(){
   const[profile,setProfile]=useState(null);
   const[view,setView]=useState({page:"home"});
 
+  const[contentVer,setContentVer]=useState(0);
+
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null)});
     const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setUser(session?.user||null)});
@@ -320,6 +339,9 @@ function App(){
   },[]);
 
   useEffect(()=>{if(!user)return;(async()=>{
+    // Load content from Supabase (courses, settings)
+    await refreshContent();
+    setContentVer(v=>v+1); // force re-render with new data
     const saved=await sbLoadProg(user.id);if(saved)setProg(p=>({...defProg(),...saved}));
     const prof=await sbGetProfile(user.id);if(prof)setProfile(prof);
   })()},[user]);
@@ -364,12 +386,6 @@ function App(){
     </div>
   </div>);
 }
-
-// ━━━ SITE SETTINGS (editable from admin) ━━━━━━━━━━━━━━━━━━━━
-const loadSettings=()=>{try{const s=localStorage.getItem("acc-coaching-settings");if(s)return JSON.parse(s)}catch(e){}return{}};
-const SETTINGS=loadSettings();
-const COACH_DATA=SETTINGS.coaching||{title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach. We'll analyze your driving, work on specific techniques, and create a personalized improvement plan.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
-const HOME_LAYOUT=SETTINGS.homeLayout||["nextLesson","courses"];
 
 // ━━━ HOME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function Home({prog,st,nav,name}){
