@@ -16,13 +16,18 @@
     ::selection{background:#e11d4844;color:#fff}
     img.lesson-img{width:100%;border-radius:10px;border:1px solid #222;display:block}
     img.quiz-img{width:100%;border-radius:8px;border:1px solid #222;margin-bottom:12px}
-    .bnav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+    .bnav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom);max-width:900px;margin:0 auto}
     .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;background:none;border:none;color:#666;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:color .15s}
     .bnav button.on{color:#e11d48}
     .bnav button svg{width:20px;height:20px}
+    @media(min-width:768px){
+      .bnav{left:50%;transform:translateX(-50%);border-radius:12px 12px 0 0;border:1px solid #222;border-bottom:none}
+      .bnav button{padding:12px 0 10px;font-size:11px}
+      .bnav button svg{width:22px;height:22px}
+    }
     @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     .penter{animation:fi .25s ease}
-    .auth-card{background:#111;border:1px solid #222;border-radius:12px;padding:28px 24px;max-width:380px;margin:0 auto}
+    .auth-card{background:#111;border:1px solid #222;border-radius:12px;padding:28px 24px;max-width:420px;margin:0 auto}
     .auth-input{width:100%;padding:12px 16px;background:#0a0a0a;border:1px solid #222;border-radius:8px;color:#e2e2e2;font-size:14px;font-family:'Rajdhani',sans-serif;margin-bottom:12px;transition:border-color .15s}
     .auth-input:focus{outline:none;border-color:#e11d48}
     .auth-input::placeholder{color:#555}
@@ -30,6 +35,9 @@
     .lb-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#111;border-radius:8px;margin-bottom:6px;border-left:3px solid transparent}
     .lb-row.me{border-left-color:#e11d48;background:#1a0a0a}
     .lb-rank{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+    .vid-source{font-size:11px;color:#666;margin-top:6px;text-align:center;font-style:italic}
+    .courses-grid{display:grid;gap:12px}
+    @media(min-width:768px){.courses-grid{grid-template-columns:1fr 1fr}}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -156,7 +164,7 @@ const renderBlock=(block,i)=>{
 const S={
   app:{minHeight:"100vh",background:"#0a0a0a",color:"#e2e2e2",fontFamily:"'Rajdhani','Segoe UI',sans-serif",position:"relative",paddingBottom:70},
   scan:{position:"fixed",inset:0,pointerEvents:"none",background:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)",zIndex:999},
-  scr:{maxWidth:540,margin:"0 auto",padding:"20px 16px 40px"},
+  scr:{maxWidth:760,margin:"0 auto",padding:"24px 20px 40px"},
   hdr:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
   logoR:{display:"flex",alignItems:"baseline",gap:8},logoT:{fontSize:32,fontWeight:900,letterSpacing:3,color:"#e11d48"},logoS:{fontSize:14,fontWeight:600,letterSpacing:6,color:"#666",textTransform:"uppercase"},tag:{fontSize:12,color:"#444",letterSpacing:3,textTransform:"uppercase",marginTop:2},
   pCard:{background:"linear-gradient(135deg,#111 0%,#1a0a0a 100%)",border:"1px solid #2a1515",borderRadius:12,padding:20,marginBottom:28},
@@ -280,20 +288,33 @@ function App(){
   </div>);
 }
 
+// ━━━ SITE SETTINGS (editable from admin) ━━━━━━━━━━━━━━━━━━━━
+const loadSettings=()=>{try{const s=localStorage.getItem("acc-coaching-settings");if(s)return JSON.parse(s)}catch(e){}return{}};
+const SETTINGS=loadSettings();
+const COACH_DATA=SETTINGS.coaching||{title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach. We'll analyze your driving, work on specific techniques, and create a personalized improvement plan.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
+const HOME_LAYOUT=SETTINGS.homeLayout||["nextLesson","courses"];
+
 // ━━━ HOME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function Home({prog,st,nav,name}){
-  return(<div style={S.scr}>
-    <div style={S.hdr}><div><div style={S.logoR}><span style={{fontSize:28}}>🏁</span><span style={S.logoT}>ACC</span><span style={S.logoS}>COACHING</span></div><div style={S.tag}>Console Edition</div></div><div style={{fontSize:12,color:"#666",textAlign:"right"}}>{name}</div></div>
-    <div style={S.pCard}><div style={S.pH}><span style={S.pL}>OVERALL PROGRESS</span><span style={S.pP}>{st.percent}%</span></div>
-      <div style={S.pBO}><div style={{...S.pBI,width:st.percent+"%"}}><div style={S.pG}/></div></div>
-      <div style={S.pSt}><div style={S.sI}><span style={S.sN}>{st.completed}</span><span style={S.sL}>Done</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.total-st.completed}</span><span style={S.sL}>Left</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.completed>0?Math.round(st.avgScore):"—"}</span><span style={S.sL}>Avg</span></div></div></div>
+  const coursesBlock=(<div key="courses">
     <div style={S.secT}><div style={S.rB}/>TRAINING COURSES</div>
+    <div className="courses-grid">
     {COURSES.map(c=>{const a=c.levels.flatMap(l=>l.chapters);const d=a.filter(ch=>prog[ch.id]?.completed).length;const p=Math.round((d/a.length)*100);
       return(<button key={c.id} style={S.cCard} onClick={()=>nav("course",{courseId:c.id})} onMouseEnter={e=>{e.currentTarget.style.borderColor="#e11d48";e.currentTarget.style.transform="translateY(-2px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#2a2a2a";e.currentTarget.style.transform="translateY(0)"}}>
         <div style={S.cTop}><div style={S.cIcon}>{c.icon}</div><div style={{flex:1}}><div style={S.cTi}>{c.title}</div><div style={S.cDe}>{c.desc}</div></div><div style={S.cAr}>›</div></div>
         <div style={S.cMeta}><span style={S.cCnt}>{a.length} chapters</span><div style={S.mBO}><div style={{...S.mBI,width:p+"%"}}/></div><span style={S.cPct}>{p}%</span></div>
       </button>)})}
-    <NxL prog={prog} nav={nav}/>
+    </div>
+  </div>);
+  const nextBlock=<NxL key="nextLesson" prog={prog} nav={nav}/>;
+  const blocks={nextLesson:nextBlock,courses:coursesBlock};
+
+  return(<div style={S.scr}>
+    <div style={S.hdr}><div><div style={S.logoR}><span style={{fontSize:28}}>🏁</span><span style={S.logoT}>ACC</span><span style={S.logoS}>COACHING</span></div><div style={S.tag}>Console Edition</div></div><div style={{fontSize:12,color:"#666",textAlign:"right"}}>{name}</div></div>
+    <div style={S.pCard}><div style={S.pH}><span style={S.pL}>OVERALL PROGRESS</span><span style={S.pP}>{st.percent}%</span></div>
+      <div style={S.pBO}><div style={{...S.pBI,width:st.percent+"%"}}><div style={S.pG}/></div></div>
+      <div style={S.pSt}><div style={S.sI}><span style={S.sN}>{st.completed}</span><span style={S.sL}>Done</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.total-st.completed}</span><span style={S.sL}>Left</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.completed>0?Math.round(st.avgScore):"—"}</span><span style={S.sL}>Avg</span></div></div></div>
+    {HOME_LAYOUT.map(k=>blocks[k]||null)}
   </div>);
 }
 function NxL({prog,nav}){
@@ -331,8 +352,7 @@ function Lesson({cid,chid,prog,upd,nav}){
     <div style={{marginBottom:4}}><div style={{...S.lvB,display:"inline-flex",background:lv.color+"22",color:lv.color,borderColor:lv.color+"44",marginBottom:8}}>{lv.level}</div><div style={S.pgT}>{ch.title}</div><div style={S.pgS}>{ch.desc}</div></div>
     <div style={S.tabs}><button style={{...S.tab,...(tab==="lesson"?S.tabA:{})}} onClick={()=>setTab("lesson")}>📖 Lesson</button><button style={{...S.tab,...(tab==="quiz"||tab==="results"?S.tabA:{})}} onClick={()=>!done?setTab("quiz"):setTab("results")}>✅ Quiz</button></div>
     {tab==="lesson"&&<div>
-      {ch.videoUrl?<div style={{borderRadius:10,overflow:"hidden",marginBottom:24,border:"1px solid #222"}}><iframe src={ch.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>
-      :<div style={S.vidP}><div style={{fontSize:48,marginBottom:8}}>▶️</div><div style={{fontSize:14,color:"#999"}}>Video lesson</div></div>}
+      {ch.videoUrl&&<div style={{marginBottom:24}}><div style={{borderRadius:10,overflow:"hidden",border:"1px solid #222"}}><iframe src={ch.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>{ch.videoSource&&<div className="vid-source">Source: {ch.videoSource}</div>}</div>}
       {ch.content.map((b,i)=>renderBlock(b,i))}
       <button style={S.pri} onClick={()=>setTab("quiz")}>Take the Quiz →</button>
     </div>}
@@ -362,15 +382,16 @@ function Lesson({cid,chid,prog,upd,nav}){
 
 // ━━━ COACHING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function Coaching(){
+  const d=COACH_DATA;const featureIcons=["🔍","🏎️","📋","🎮","🏁","⚡","🔧","🏆"];
   return(<div style={S.scr}>
-    <div style={{textAlign:"center",padding:"20px 0 10px"}}><div style={{fontSize:56,marginBottom:12}}>🎯</div><div style={S.pgT}>1-on-1 Coaching</div><div style={{fontSize:13,color:"#888",marginTop:4,maxWidth:360,margin:"4px auto 0"}}>Take your driving to the next level with a personalized solo session</div></div>
+    <div style={{textAlign:"center",padding:"20px 0 10px"}}><div style={{fontSize:56,marginBottom:12}}>🎯</div><div style={S.pgT}>{d.title}</div><div style={{fontSize:13,color:"#888",marginTop:4,maxWidth:420,margin:"4px auto 0"}}>{d.subtitle}</div></div>
     <div style={{background:"linear-gradient(135deg,#111,#1a0a0a)",border:"1px solid #2a1515",borderRadius:12,padding:24,marginTop:24}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><div style={{width:48,height:48,borderRadius:12,background:"#e11d4818",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>⏱️</div><div><div style={{fontSize:18,fontWeight:700}}>Solo Session</div><div style={{fontSize:12,color:"#888"}}>1 hour · Private · All levels</div></div></div>
-      <div style={{fontSize:13,color:"#ccc",lineHeight:1.7,marginBottom:20}}>Get dedicated attention from an experienced ACC coach. We'll analyze your driving, work on specific techniques, and create a personalized improvement plan.</div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><div style={{width:48,height:48,borderRadius:12,background:"#e11d4818",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>⏱️</div><div><div style={{fontSize:18,fontWeight:700}}>{d.sessionTitle}</div><div style={{fontSize:12,color:"#888"}}>{d.sessionSub}</div></div></div>
+      <div style={{fontSize:13,color:"#ccc",lineHeight:1.7,marginBottom:20}}>{d.sessionDesc}</div>
       <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-        {[{i:"🔍",t:"Telemetry analysis & driving review"},{i:"🏎️",t:"Personalized technique training"},{i:"📋",t:"Custom improvement plan"},{i:"🎮",t:"Controller & setup optimization"},{i:"🏁",t:"Race strategy & racecraft coaching"}].map((x,j)=><div key={j} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#0a0a0a",borderRadius:8,border:"1px solid #1a1a1a"}}><span style={{fontSize:18}}>{x.i}</span><span style={{fontSize:13,color:"#ccc"}}>{x.t}</span></div>)}
+        {(d.features||[]).map((f,j)=><div key={j} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#0a0a0a",borderRadius:8,border:"1px solid #1a1a1a"}}><span style={{fontSize:18}}>{featureIcons[j%featureIcons.length]}</span><span style={{fontSize:13,color:"#ccc"}}>{f}</span></div>)}
       </div>
-      <a href="https://www.xboxcommunityleague.com/shop" target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",padding:"14px 24px",background:"linear-gradient(135deg,#e11d48,#be123c)",color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:700,letterSpacing:1,textDecoration:"none"}}>🎯 Book Your Session</a>
+      <a href={d.bookUrl||"#"} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",padding:"14px 24px",background:"linear-gradient(135deg,#e11d48,#be123c)",color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:700,letterSpacing:1,textDecoration:"none"}}>🎯 {d.bookLabel||"Book Your Session"}</a>
       <div style={{textAlign:"center",marginTop:10,fontSize:11,color:"#666"}}>Redirects to our booking platform</div>
     </div>
   </div>);
