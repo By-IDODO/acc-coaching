@@ -238,11 +238,38 @@ function AdminApp() {
   const [loginPass, setLoginPass] = useState("");
   const [loginErr, setLoginErr] = useState("");
 
+  const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
+
+  const save = useCallback(() => {
+    if (saveData(courses)) {
+      showToast("Modifications enregistrées !");
+      setHasChanges(false);
+    } else {
+      showToast("Erreur de sauvegarde", "error");
+    }
+  }, [courses]);
+
   useEffect(() => {
     sb.auth.getSession().then(({data:{session}})=>{setAuthUser(session?.user||null)});
     const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setAuthUser(session?.user||null)});
     return()=>subscription.unsubscribe();
   }, []);
+
+  const updateCourses = (fn) => {
+    setCourses(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); return next; });
+    setHasChanges(true);
+  };
+
+  const nav = (sel) => { setSelected(sel); setSidebarOpen(false); };
+
+  // Count helpers
+  const totalChapters = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
+  const totalQuiz = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
+
+  function doLogin(){
+    setLoginErr("");
+    sb.auth.signInWithPassword({email:loginEmail,password:loginPass}).then(({error})=>{if(error)setLoginErr(error.message)});
+  }
 
   // Auth gate: must be logged in with admin email
   if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Chargement...</div></div></div>;
@@ -260,33 +287,6 @@ function AdminApp() {
       </div>
     </div>
   );
-
-  function doLogin(){
-    setLoginErr("");
-    sb.auth.signInWithPassword({email:loginEmail,password:loginPass}).then(({error})=>{if(error)setLoginErr(error.message)});
-  }
-
-  const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
-
-  const save = useCallback(() => {
-    if (saveData(courses)) {
-      showToast("Modifications enregistrées !");
-      setHasChanges(false);
-    } else {
-      showToast("Erreur de sauvegarde", "error");
-    }
-  }, [courses]);
-
-  const updateCourses = (fn) => {
-    setCourses(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); return next; });
-    setHasChanges(true);
-  };
-
-  const nav = (sel) => { setSelected(sel); setSidebarOpen(false); };
-
-  // Count helpers
-  const totalChapters = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
-  const totalQuiz = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
 
   return (
     <div className="admin-layout">
