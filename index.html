@@ -211,6 +211,12 @@ const sbUpdateLB=async(uid,name,prog)=>{
 const sbGetLB=async()=>{const{data}=await sb.from("leaderboard").select("*").order("completed",{ascending:false}).limit(50);return data||[]};
 const sbGetProfile=async(uid)=>{const{data}=await sb.from("profiles").select("*").eq("id",uid).single();return data};
 
+const sbTouchLastActive=async(uid)=>{try{await sb.from("user_activity").upsert({user_id:uid,last_active:new Date().toISOString()},{onConflict:"user_id"})}catch(e){console.warn("last_active update error:",e)}};
+const sbLoadSessionLogs=async(uid)=>{try{const{data,error}=await sb.from("session_logs").select("*").eq("user_id",uid).order("session_date",{ascending:false}).order("created_at",{ascending:false});if(error){console.warn("Session logs load error:",error);return[]}return data||[]}catch(e){console.warn("Session logs load catch:",e);return[]}};
+const sbCreateSessionLog=async(uid,payload)=>{const{data,error}=await sb.from("session_logs").insert([{user_id:uid,...payload,updated_at:new Date().toISOString()}]).select().single();if(error)throw error;return data};
+const sbUpdateSessionLog=async(uid,id,payload)=>{const{data,error}=await sb.from("session_logs").update({...payload,updated_at:new Date().toISOString()}).eq("id",id).eq("user_id",uid).select().single();if(error)throw error;return data};
+const sbDeleteSessionLog=async(uid,id)=>{const{error}=await sb.from("session_logs").delete().eq("id",id).eq("user_id",uid);if(error)throw error};
+
 // ━━━ MATCHMAKING HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const sbSetAvailable=async(uid,name,avail)=>{await sb.from("matchmaking").upsert({id:uid,display_name:name,available:avail,matched_with:null,updated_at:new Date().toISOString()})};
 const sbGetAvailable=async(uid)=>{const{data}=await sb.from("matchmaking").select("*").eq("available",true).neq("id",uid);return data||[]};
@@ -331,6 +337,16 @@ function App(){
   const[view,setView]=useState({page:"home"});
 
   const[contentVer,setContentVer]=useState(0);
+  const lastActiveRef=React.useRef(0);
+
+  const touchLastActive=React.useCallback(async(force=false)=>{
+    if(!user?.id)return;
+    const now=Date.now();
+    if(!force&&now-lastActiveRef.current<60000)return;
+    lastActiveRef.current=now;
+    await sbTouchLastActive(user.id);
+    setProfile(p=>p?{...p,last_active:new Date().toISOString()}:p);
+  },[user?.id]);
 
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null)});
@@ -344,7 +360,15 @@ function App(){
     setContentVer(v=>v+1); // force re-render with new data
     const saved=await sbLoadProg(user.id);if(saved)setProg(p=>({...defProg(),...saved}));
     const prof=await sbGetProfile(user.id);if(prof)setProfile(prof);
-  })()},[user]);
+    touchLastActive(true);
+  })()},[user,touchLastActive]);
+
+  useEffect(()=>{
+    if(!user)return;
+    const onVisible=()=>{if(document.visibilityState==="visible")touchLastActive()};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>document.removeEventListener("visibilitychange",onVisible);
+  },[user,touchLastActive]);
 
   // Auto-save progress
   const saveRef=React.useRef(null);
@@ -352,11 +376,12 @@ function App(){
     sbSaveProg(user.id,prog);
     const displayName=profile?.display_name||user.user_metadata?.display_name||user.email?.split("@")[0]||"Driver";
     sbUpdateLB(user.id,displayName,prog);
-  },1000)},[prog]);
+    touchLastActive();
+  },1000);return()=>clearTimeout(saveRef.current)},[prog,user,profile,touchLastActive]);
 
   const upd=(cid,data)=>{setProg(p=>{const ex=p[cid]||{};const nb=data.quizScore!=null?Math.max(data.quizScore,ex.bestScore||0):ex.bestScore;return{...p,[cid]:{...ex,...data,bestScore:nb}}})};
   const stats=()=>{const a=COURSES.flatMap(c=>c.levels.flatMap(l=>l.chapters));const d=a.filter(ch=>prog[ch.id]?.completed).length;const t=a.length;const av=a.reduce((s,ch)=>s+(prog[ch.id]?.bestScore||0),0)/Math.max(d,1);return{completed:d,total:t,avgScore:av,percent:Math.round((d/t)*100)}};
-  const nav=(page,data={})=>{setView({page,...data});window.scrollTo(0,0)};
+  const nav=(page,data={})=>{setView({page,...data});window.scrollTo(0,0);touchLastActive()};
   const displayName=profile?.display_name||user?.user_metadata?.display_name||user?.email?.split("@")[0]||"Driver";
 
   if(user===undefined)return<div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🏁</div><div style={{color:"#e2e2e2",fontSize:18,letterSpacing:4}}>LOADING...</div></div></div>;
@@ -634,6 +659,191 @@ function Coaching(){
   </div>);
 }
 
+// ━━━ SESSION JOURNAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function SessionJournal({uid}){
+  const emptyForm=()=>({session_date:new Date().toISOString().slice(0,10),track:"",car:"",best_lap:"",average_lap:"",focus:"",main_mistake:"",notes:""});
+  const[items,setItems]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
+  const[status,setStatus]=useState("");
+  const[editingId,setEditingId]=useState(null);
+  const[form,setForm]=useState(emptyForm());
+
+  const load=React.useCallback(async()=>{
+    setLoading(true);
+    const data=await sbLoadSessionLogs(uid);
+    setItems(data||[]);
+    setLoading(false);
+  },[uid]);
+
+  useEffect(()=>{load()},[load]);
+
+  const onChange=(key,val)=>setForm(prev=>({...prev,[key]:val}));
+
+  const startEdit=(item)=>{
+    setEditingId(item.id);
+    setForm({
+      session_date:item.session_date||new Date().toISOString().slice(0,10),
+      track:item.track||"",
+      car:item.car||"",
+      best_lap:item.best_lap||"",
+      average_lap:item.average_lap||"",
+      focus:item.focus||"",
+      main_mistake:item.main_mistake||"",
+      notes:item.notes||"",
+    });
+    setStatus("");
+  };
+
+  const resetForm=()=>{
+    setEditingId(null);
+    setForm(emptyForm());
+    setStatus("");
+  };
+
+  const submit=async()=>{
+    if(!form.session_date){setStatus("Please choose a session date.");return;}
+    setSaving(true);
+    setStatus("");
+    const payload={
+      session_date:form.session_date,
+      track:form.track.trim()||null,
+      car:form.car.trim()||null,
+      best_lap:form.best_lap.trim()||null,
+      average_lap:form.average_lap.trim()||null,
+      focus:form.focus.trim()||null,
+      main_mistake:form.main_mistake.trim()||null,
+      notes:form.notes.trim()||null,
+    };
+    try{
+      const row=editingId?await sbUpdateSessionLog(uid,editingId,payload):await sbCreateSessionLog(uid,payload);
+      setItems(prev=>{
+        const next=editingId?prev.map(item=>item.id===editingId?row:item):[row,...prev];
+        return next.slice().sort((a,b)=>{
+          const db=new Date(b.session_date||b.created_at||0).getTime();
+          const da=new Date(a.session_date||a.created_at||0).getTime();
+          return db-da;
+        });
+      });
+      const successMessage=editingId?"Session sheet updated.":"Session sheet saved.";
+      resetForm();
+      setStatus(successMessage);
+    }catch(e){
+      console.error("Session sheet save error:",e);
+      setStatus("Could not save this session sheet.");
+    }finally{
+      setSaving(false);
+    }
+  };
+
+  const remove=async(id)=>{
+    if(!window.confirm("Delete this session sheet?"))return;
+    try{
+      await sbDeleteSessionLog(uid,id);
+      setItems(prev=>prev.filter(item=>item.id!==id));
+      if(editingId===id)resetForm();
+      setStatus("Session sheet deleted.");
+    }catch(e){
+      console.error("Session sheet delete error:",e);
+      setStatus("Could not delete this session sheet.");
+    }
+  };
+
+  return(
+    <div style={{marginTop:32}}>
+      <div style={{...S.secT,marginTop:0}}><div style={S.rB}/>SESSION JOURNAL</div>
+      <div style={{fontSize:13,color:"#888",lineHeight:1.7,marginBottom:16}}>Keep a dated log of each practice session. These session sheets stay private to you inside the app, and your coach can review them from the admin side.</div>
+
+      <div style={{background:"#111",border:"1px solid #222",borderRadius:14,padding:16,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:17,fontWeight:700,color:"#e2e2e2"}}>{editingId?"Edit session sheet":"New session sheet"}</div>
+            <div style={{fontSize:12,color:"#666",marginTop:3}}>Date your sessions so you can track your progression over time.</div>
+          </div>
+          {editingId&&<button style={S.sec} onClick={resetForm}>Cancel edit</button>}
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Session date</div>
+            <input className="auth-input" style={{marginBottom:0}} type="date" value={form.session_date} onChange={e=>onChange("session_date",e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Track</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="Spa, Monza, Barcelona..." value={form.track} onChange={e=>onChange("track",e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Car</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="BMW M4 GT3, Ferrari 296..." value={form.car} onChange={e=>onChange("car",e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Best lap</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="2:18.642" value={form.best_lap} onChange={e=>onChange("best_lap",e.target.value)}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Average lap</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="2:19.201" value={form.average_lap} onChange={e=>onChange("average_lap",e.target.value)}/>
+          </div>
+          <div style={{gridColumn:"1 / -1"}}>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Main focus</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="Braking consistency into T1" value={form.focus} onChange={e=>onChange("focus",e.target.value)}/>
+          </div>
+          <div style={{gridColumn:"1 / -1"}}>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Main mistake or issue</div>
+            <input className="auth-input" style={{marginBottom:0}} placeholder="Too aggressive on throttle at corner exit" value={form.main_mistake} onChange={e=>onChange("main_mistake",e.target.value)}/>
+          </div>
+          <div style={{gridColumn:"1 / -1"}}>
+            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Notes</div>
+            <textarea className="auth-input" rows="4" style={{marginBottom:0,resize:"vertical"}} placeholder="What worked, what did not, what you want to review next time..." value={form.notes} onChange={e=>onChange("notes",e.target.value)}/>
+          </div>
+        </div>
+
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginTop:14}}>
+          <button style={{...S.pri,marginTop:0,justifyContent:"center"}} onClick={submit} disabled={saving}>{saving?"Saving...":editingId?"Update session sheet":"Save session sheet"}</button>
+          {status&&<div style={{fontSize:12,color:status.toLowerCase().includes("could not")||status.toLowerCase().includes("please")?"#ef4444":"#22c55e"}}>{status}</div>}
+        </div>
+      </div>
+
+      <div style={{background:"#111",border:"1px solid #222",borderRadius:14,padding:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
+          <div style={{fontSize:16,fontWeight:700,color:"#e2e2e2"}}>Your saved session sheets</div>
+          <div style={{fontSize:12,color:"#666"}}>{items.length} saved</div>
+        </div>
+
+        {loading?<div style={{fontSize:13,color:"#888",padding:"10px 0"}}>Loading your session sheets...</div>:
+          items.length===0?<div style={{fontSize:13,color:"#888",lineHeight:1.7}}>No session sheets yet. Create your first dated entry above after your next practice session.</div>:
+          <div style={{display:"grid",gap:10}}>
+            {items.map(item=>(
+              <div key={item.id} style={{border:"1px solid #222",borderRadius:12,padding:14,background:"#0d0d0d"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                  <div>
+                    <div style={{fontSize:15,fontWeight:700,color:"#e2e2e2"}}>{item.track||"Untitled session"}{item.car?` · ${item.car}`:""}</div>
+                    <div style={{fontSize:12,color:"#666",marginTop:4}}>{item.session_date?new Date(item.session_date+"T12:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"No date"}</div>
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button style={S.sec} onClick={()=>startEdit(item)}>Edit</button>
+                    <button style={{...S.sec,borderColor:"#ef444444",color:"#ef4444"}} onClick={()=>remove(item.id)}>Delete</button>
+                  </div>
+                </div>
+
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+                  {item.best_lap&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff7b95",border:"1px solid #e11d4844"}}>Best lap: {item.best_lap}</span>}
+                  {item.average_lap&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#1a1a1a",color:"#bbb",border:"1px solid #2a2a2a"}}>Average lap: {item.average_lap}</span>}
+                </div>
+
+                {(item.focus||item.main_mistake||item.notes)&&<div style={{marginTop:12,display:"grid",gap:8}}>
+                  {item.focus&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Main focus</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7}}>{item.focus}</div></div>}
+                  {item.main_mistake&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Main mistake</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7}}>{item.main_mistake}</div></div>}
+                  {item.notes&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.notes}</div></div>}
+                </div>}
+              </div>
+            ))}
+          </div>}
+      </div>
+    </div>
+  );
+}
+
 // ━━━ PROFILE (includes leaderboard) ━━━━━━━━━━━━━━━━━━━━━━━━━
 function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
   const[cfm,setCfm]=useState(false);const[showLB,setShowLB]=useState(false);const[lbData,setLbData]=useState([]);
@@ -645,6 +855,7 @@ function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
       <div style={S.pgT}>{name}</div>
       <div style={{fontSize:12,color:"#666",marginTop:4}}>{user.email}</div>
       <div style={{...S.lvB,display:"inline-flex",marginTop:8,background:st.percent>=80?"#ef444422":st.percent>=40?"#f59e0b22":"#22c55e22",color:st.percent>=80?"#ef4444":st.percent>=40?"#f59e0b":"#22c55e",borderColor:st.percent>=80?"#ef444444":st.percent>=40?"#f59e0b44":"#22c55e44"}}>{st.percent>=80?"Expert":st.percent>=40?"Intermediate":"Beginner"}</div>
+      {profile?.last_active&&<div style={{fontSize:11,color:"#666",marginTop:8}}>Last active: {new Date(profile.last_active).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})} · {new Date(profile.last_active).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}</div>}
     </div>
     <div className="stat-grid-4">
       <div style={S.stB}><div style={S.stBN}>{st.completed}</div><div style={S.stBL}>Done</div></div>
@@ -655,6 +866,8 @@ function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
     <div style={{...S.secT,marginTop:32}}><div style={S.rB}/>COURSE BREAKDOWN</div>
     {COURSES.map(c=>{const ch=c.levels.flatMap(l=>l.chapters);const d=ch.filter(x=>prog[x.id]?.completed).length;
       return<div key={c.id} style={S.prR}><span style={{fontSize:24}}>{c.icon}</span><div style={{flex:1}}><div style={{color:"#e2e2e2",fontSize:15,fontWeight:600}}>{c.title}</div><div style={{color:"#666",fontSize:13,marginTop:2}}>{d}/{ch.length}</div></div><div style={{...S.mBO,width:80}}><div style={{...S.mBI,width:Math.round((d/ch.length)*100)+"%"}}/></div></div>})}
+
+    <SessionJournal uid={uid}/>
 
     <button style={{...S.sec,width:"100%",justifyContent:"center",marginTop:24}} onClick={loadLB}>🏆 {showLB?"Hide":"Show"} Leaderboard</button>
     {showLB&&<div style={{marginTop:16}}>
