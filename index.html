@@ -18,9 +18,10 @@
     img.quiz-img{width:100%;border-radius:8px;border:1px solid #222;margin-bottom:12px}
     /* Bottom nav */
     .bnav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-    .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;background:none;border:none;color:#666;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:color .15s}
+    .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;background:none;border:none;color:#666;font-family:'Rajdhani',sans-serif;font-size:9px;font-weight:600;cursor:pointer;letter-spacing:.7px;transition:color .15s}
     .bnav button.on{color:#e11d48}
     .bnav button svg{width:20px;height:20px}
+    .bnav button span{display:block;max-width:100%;line-height:1.05;word-break:break-word}
     /* Desktop: sidebar nav */
     @media(min-width:1024px){
       .bnav{position:fixed;left:0;top:0;bottom:0;right:auto;width:80px;flex-direction:column;border-top:none;border-right:1px solid #222;padding-bottom:0;padding-top:20px;gap:8px}
@@ -217,6 +218,92 @@ const sbCreateSessionLog=async(uid,payload)=>{const{data,error}=await sb.from("s
 const sbUpdateSessionLog=async(uid,id,payload)=>{const{data,error}=await sb.from("session_logs").update({...payload,updated_at:new Date().toISOString()}).eq("id",id).eq("user_id",uid).select().single();if(error)throw error;return data};
 const sbDeleteSessionLog=async(uid,id)=>{const{error}=await sb.from("session_logs").delete().eq("id",id).eq("user_id",uid);if(error)throw error};
 
+
+const ACC_TRACKS=[
+  "Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"
+];
+
+const parseLapTimeToSeconds=(value)=>{
+  if(value==null)return null;
+  const raw=String(value).trim().replace(/,/g,'.');
+  if(!raw)return null;
+  if(/^\d+:\d{2}\.\d{1,3}$/.test(raw)){
+    const [m,s]=raw.split(':');
+    return parseInt(m,10)*60+parseFloat(s);
+  }
+  if(/^\d+:\d{2}$/.test(raw)){
+    const [m,s]=raw.split(':');
+    return parseInt(m,10)*60+parseInt(s,10);
+  }
+  if(/^\d+\.\d{1,3}$/.test(raw)||/^\d+$/.test(raw))return parseFloat(raw);
+  return null;
+};
+
+const formatLapSeconds=(seconds)=>{
+  if(seconds==null||Number.isNaN(seconds))return '—';
+  const mins=Math.floor(seconds/60);
+  const secs=seconds-mins*60;
+  return `${mins}:${secs.toFixed(3).padStart(6,'0')}`;
+};
+
+const buildTrackProgression=(items,track)=>{
+  return (items||[])
+    .filter(item=>item.track===track)
+    .map(item=>({
+      ...item,
+      seconds:parseLapTimeToSeconds(item.best_lap||item.average_lap||''),
+      sortDate:new Date(`${item.session_date||'1970-01-01'}T12:00:00`).getTime(),
+      dateLabel:item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'No date'
+    }))
+    .filter(item=>item.seconds!=null)
+    .sort((a,b)=>a.sortDate-b.sortDate);
+};
+
+function LapProgressChart({points,title='Best lap progression'}){
+  if(!points||points.length===0)return <div style={{padding:18,border:'1px dashed #2d2d2d',borderRadius:12,color:'#777',fontSize:13}}>No lap-time data yet for this track. Add a session sheet with a best lap to unlock the chart.</div>;
+  if(points.length===1)return(
+    <div style={{padding:18,border:'1px solid #222',borderRadius:12,background:'#111'}}>
+      <div style={{fontSize:13,color:'#888',marginBottom:6}}>{title}</div>
+      <div style={{fontSize:22,fontWeight:800,color:'#e2e2e2'}}>{points[0].best_lap||formatLapSeconds(points[0].seconds)}</div>
+      <div style={{fontSize:12,color:'#666',marginTop:4}}>Only one session logged so far on {points[0].dateLabel}. Add another one to see your curve.</div>
+    </div>
+  );
+  const width=100,height=58,pad={left:8,right:4,top:6,bottom:12};
+  const values=points.map(p=>p.seconds);
+  const min=Math.min(...values),max=Math.max(...values);
+  const spread=Math.max(max-min,0.25);
+  const stepX=(width-pad.left-pad.right)/Math.max(points.length-1,1);
+  const toY=(v)=>pad.top+((v-min)/spread)*(height-pad.top-pad.bottom);
+  const coords=points.map((point,index)=>({x:pad.left+stepX*index,y:toY(point.seconds),point}));
+  const polyline=coords.map(p=>`${p.x},${p.y}`).join(' ');
+  const latest=points[points.length-1];
+  const first=points[0];
+  const delta=latest.seconds-first.seconds;
+  return(
+    <div style={{border:'1px solid #222',borderRadius:12,background:'#111',padding:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:700,color:'#e2e2e2'}}>{title}</div>
+          <div style={{fontSize:12,color:'#666',marginTop:2}}>{points.length} logged session{points.length>1?'s':''}</div>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#1b1b1b',border:'1px solid #2a2a2a',color:'#aaa'}}>Best {formatLapSeconds(min)}</span>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Improvement':'Regression'} {Math.abs(delta).toFixed(3)}s</span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:220,display:'block'}} preserveAspectRatio='none'>
+        {[0,1,2,3].map(i=>{const y=pad.top+((height-pad.top-pad.bottom)/3)*i;return <line key={i} x1={pad.left} y1={y} x2={width-pad.right} y2={y} stroke='#1f1f1f' strokeWidth='0.5'/>;})}
+        <polyline fill='none' stroke='#e11d48' strokeWidth='2.4' strokeLinejoin='round' strokeLinecap='round' points={polyline}/>
+        {coords.map(({x,y,point})=><g key={point.id}><circle cx={x} cy={y} r='2.2' fill='#e11d48'/><circle cx={x} cy={y} r='4.8' fill='transparent'><title>{`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.seconds)}`}</title></circle></g>)}
+      </svg>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:10,fontSize:11,color:'#777'}}>
+        <div>{first.dateLabel}</div>
+        <div>{latest.dateLabel}</div>
+      </div>
+    </div>
+  );
+}
+
 // ━━━ MATCHMAKING HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const sbSetAvailable=async(uid,name,avail)=>{await sb.from("matchmaking").upsert({id:uid,display_name:name,available:avail,matched_with:null,updated_at:new Date().toISOString()})};
 const sbGetAvailable=async(uid)=>{const{data}=await sb.from("matchmaking").select("*").eq("available",true).neq("id",uid);return data||[]};
@@ -238,6 +325,7 @@ const NvL=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.6
 const NvP=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const NvQ=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 const NvPl=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const NvD=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M4 18h16M7 14l3-3 3 2 4-5" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="7" cy="14" r="1.4" fill={c}/><circle cx="10" cy="11" r="1.4" fill={c}/><circle cx="13" cy="13" r="1.4" fill={c}/><circle cx="17" cy="8" r="1.4" fill={c}/></svg>;
 
 const renderBlock=(block,i)=>{
   // Image block
@@ -399,6 +487,7 @@ function App(){
       {view.page==="quizplay"&&<QuizPlay courseId={view.courseId} chid={view.chapterId} prog={prog} upd={upd} nav={nav}/>}
       {view.page==="play"&&<PlayScreen uid={user.id} name={displayName}/>}
       {view.page==="coaching"&&<Coaching/>}
+      {view.page==="development"&&<DevelopmentScreen uid={user.id} name={displayName}/>}
       {view.page==="profile"&&<Profile prog={prog} st={stats()} nav={nav} user={user} name={displayName} profile={profile} uid={user.id} onReset={()=>setProg(defProg())} onLogout={()=>sb.auth.signOut()}/>}
     </div>
     </div>
@@ -406,6 +495,7 @@ function App(){
       <button className={ap==="home"?"on":""} onClick={()=>nav("home")}><NvH c={ap==="home"?"#e11d48":"#666"}/><span>HOME</span></button>
       <button className={ap==="quiz"?"on":""} onClick={()=>nav("quiz")}><NvQ c={ap==="quiz"?"#e11d48":"#666"}/><span>QUIZ</span></button>
       <button className={view.page==="play"?"on":""} onClick={()=>nav("play")}><NvPl c={view.page==="play"?"#e11d48":"#666"}/><span>PLAY</span></button>
+      <button className={view.page==="development"?"on":""} onClick={()=>nav("development")}><NvD c={view.page==="development"?"#e11d48":"#666"}/><span>DEVELOPMENT</span></button>
       <button className={view.page==="coaching"?"on":""} onClick={()=>nav("coaching")}><NvC c={view.page==="coaching"?"#e11d48":"#666"}/><span>COACH</span></button>
       <button className={view.page==="profile"?"on":""} onClick={()=>nav("profile")}><NvP c={view.page==="profile"?"#e11d48":"#666"}/><span>PROFILE</span></button>
     </div>
@@ -660,13 +750,16 @@ function Coaching(){
 }
 
 // ━━━ SESSION JOURNAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function SessionJournal({uid}){
-  const emptyForm=()=>({session_date:new Date().toISOString().slice(0,10),track:"",car:"",best_lap:"",average_lap:"",focus:"",main_mistake:"",notes:""});
+
+function DevelopmentScreen({uid,name}){
+  const emptyForm=()=>({session_date:new Date().toISOString().slice(0,10),car:"",best_lap:"",average_lap:"",focus:"",main_mistake:"",notes:""});
   const[items,setItems]=useState([]);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
   const[status,setStatus]=useState("");
   const[editingId,setEditingId]=useState(null);
+  const[selectedTrack,setSelectedTrack]=useState("");
+  const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState(emptyForm());
 
   const load=React.useCallback(async()=>{
@@ -678,173 +771,116 @@ function SessionJournal({uid}){
 
   useEffect(()=>{load()},[load]);
 
+  useEffect(()=>{
+    if(selectedTrack)return;
+    const firstTracked=(items||[]).find(item=>item.track&&ACC_TRACKS.includes(item.track));
+    if(firstTracked?.track)setSelectedTrack(firstTracked.track);
+  },[items,selectedTrack]);
+
+  useEffect(()=>{
+    if(editingId){
+      const current=items.find(item=>item.id===editingId);
+      if(current&&current.track!==selectedTrack){
+        setEditingId(null);
+        setForm(emptyForm());
+        setStatus('Track changed. Editing mode was cleared.');
+      }
+    }
+  },[selectedTrack,editingId,items]);
+
+  const filteredItems=React.useMemo(()=>{
+    return (items||[])
+      .filter(item=>!selectedTrack||item.track===selectedTrack)
+      .sort((a,b)=>new Date(`${b.session_date||'1970-01-01'}T12:00:00`).getTime()-new Date(`${a.session_date||'1970-01-01'}T12:00:00`).getTime());
+  },[items,selectedTrack]);
+
+  const chartPoints=React.useMemo(()=>buildTrackProgression(items,selectedTrack),[items,selectedTrack]);
+  const bestSeconds=chartPoints.length?Math.min(...chartPoints.map(point=>point.seconds)):null;
+  const latestSession=filteredItems[0]||null;
+  const totalForTrack=filteredItems.length;
+
   const onChange=(key,val)=>setForm(prev=>({...prev,[key]:val}));
+  const resetForm=()=>{setEditingId(null);setForm(emptyForm());setShowForm(false);setStatus("")};
 
   const startEdit=(item)=>{
+    if(item.track)setSelectedTrack(item.track);
     setEditingId(item.id);
-    setForm({
-      session_date:item.session_date||new Date().toISOString().slice(0,10),
-      track:item.track||"",
-      car:item.car||"",
-      best_lap:item.best_lap||"",
-      average_lap:item.average_lap||"",
-      focus:item.focus||"",
-      main_mistake:item.main_mistake||"",
-      notes:item.notes||"",
-    });
+    setShowForm(true);
+    setForm({session_date:item.session_date||new Date().toISOString().slice(0,10),car:item.car||"",best_lap:item.best_lap||"",average_lap:item.average_lap||"",focus:item.focus||"",main_mistake:item.main_mistake||"",notes:item.notes||""});
     setStatus("");
-  };
-
-  const resetForm=()=>{
-    setEditingId(null);
-    setForm(emptyForm());
-    setStatus("");
+    window.scrollTo({top:0,behavior:'smooth'});
   };
 
   const submit=async()=>{
-    if(!form.session_date){setStatus("Please choose a session date.");return;}
-    setSaving(true);
-    setStatus("");
-    const payload={
-      session_date:form.session_date,
-      track:form.track.trim()||null,
-      car:form.car.trim()||null,
-      best_lap:form.best_lap.trim()||null,
-      average_lap:form.average_lap.trim()||null,
-      focus:form.focus.trim()||null,
-      main_mistake:form.main_mistake.trim()||null,
-      notes:form.notes.trim()||null,
-    };
+    if(!selectedTrack){setStatus('Select a track first.');return;}
+    if(!form.session_date){setStatus('Please choose a session date.');return;}
+    setSaving(true);setStatus('');
+    const payload={session_date:form.session_date,track:selectedTrack,car:form.car.trim()||null,best_lap:form.best_lap.trim()||null,average_lap:form.average_lap.trim()||null,focus:form.focus.trim()||null,main_mistake:form.main_mistake.trim()||null,notes:form.notes.trim()||null};
     try{
       const row=editingId?await sbUpdateSessionLog(uid,editingId,payload):await sbCreateSessionLog(uid,payload);
-      setItems(prev=>{
-        const next=editingId?prev.map(item=>item.id===editingId?row:item):[row,...prev];
-        return next.slice().sort((a,b)=>{
-          const db=new Date(b.session_date||b.created_at||0).getTime();
-          const da=new Date(a.session_date||a.created_at||0).getTime();
-          return db-da;
-        });
-      });
-      const successMessage=editingId?"Session sheet updated.":"Session sheet saved.";
-      resetForm();
-      setStatus(successMessage);
-    }catch(e){
-      console.error("Session sheet save error:",e);
-      setStatus("Could not save this session sheet.");
-    }finally{
-      setSaving(false);
-    }
+      setItems(prev=>{const next=editingId?prev.map(item=>item.id===editingId?row:item):[row,...prev];return [...next].sort((a,b)=>new Date(`${b.session_date||'1970-01-01'}T12:00:00`).getTime()-new Date(`${a.session_date||'1970-01-01'}T12:00:00`).getTime())});
+      setEditingId(null);setForm(emptyForm());setShowForm(false);setStatus(editingId?'Session entry updated.':'Session entry saved.');
+    }catch(e){console.error('Development save error:',e);setStatus('Could not save this session entry.');}
+    finally{setSaving(false)}
   };
 
   const remove=async(id)=>{
-    if(!window.confirm("Delete this session sheet?"))return;
-    try{
-      await sbDeleteSessionLog(uid,id);
-      setItems(prev=>prev.filter(item=>item.id!==id));
-      if(editingId===id)resetForm();
-      setStatus("Session sheet deleted.");
-    }catch(e){
-      console.error("Session sheet delete error:",e);
-      setStatus("Could not delete this session sheet.");
-    }
+    if(!window.confirm('Delete this session entry?'))return;
+    try{await sbDeleteSessionLog(uid,id);setItems(prev=>prev.filter(item=>item.id!==id));if(editingId===id)resetForm();setStatus('Session entry deleted.')}catch(e){console.error('Development delete error:',e);setStatus('Could not delete this session entry.');}
   };
 
-  return(
-    <div style={{marginTop:32}}>
-      <div style={{...S.secT,marginTop:0}}><div style={S.rB}/>SESSION JOURNAL</div>
-      <div style={{fontSize:13,color:"#888",lineHeight:1.7,marginBottom:16}}>Keep a dated log of each practice session. These session sheets stay private to you inside the app, and your coach can review them from the admin side.</div>
-
-      <div style={{background:"#111",border:"1px solid #222",borderRadius:14,padding:16,marginBottom:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}}>
-          <div>
-            <div style={{fontSize:17,fontWeight:700,color:"#e2e2e2"}}>{editingId?"Edit session sheet":"New session sheet"}</div>
-            <div style={{fontSize:12,color:"#666",marginTop:3}}>Date your sessions so you can track your progression over time.</div>
-          </div>
-          {editingId&&<button style={S.sec} onClick={resetForm}>Cancel edit</button>}
+  return(<div className="scr">
+    <div style={S.hdr}><div><div style={S.logoR}><span style={{fontSize:28}}>📈</span><span style={S.logoT}>DEVELOPMENT</span></div><div style={S.tag}>Track your on-track evolution</div></div><div style={{fontSize:12,color:'#666',textAlign:'right'}}>{name}</div></div>
+    <div style={{...S.pCard,marginBottom:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:'#fff'}}>Private practice journal</div>
+          <div style={{fontSize:13,color:'#888',marginTop:6,lineHeight:1.7,maxWidth:720}}>Use one focused page to log your sessions, follow your lap-time curve, and keep your development organised track by track. These entries stay private to you in the app, while your coach can review them from the admin side.</div>
         </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-          <div>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Session date</div>
-            <input className="auth-input" style={{marginBottom:0}} type="date" value={form.session_date} onChange={e=>onChange("session_date",e.target.value)}/>
-          </div>
-          <div>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Track</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="Spa, Monza, Barcelona..." value={form.track} onChange={e=>onChange("track",e.target.value)}/>
-          </div>
-          <div>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Car</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="BMW M4 GT3, Ferrari 296..." value={form.car} onChange={e=>onChange("car",e.target.value)}/>
-          </div>
-          <div>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Best lap</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="2:18.642" value={form.best_lap} onChange={e=>onChange("best_lap",e.target.value)}/>
-          </div>
-          <div>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Average lap</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="2:19.201" value={form.average_lap} onChange={e=>onChange("average_lap",e.target.value)}/>
-          </div>
-          <div style={{gridColumn:"1 / -1"}}>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Main focus</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="Braking consistency into T1" value={form.focus} onChange={e=>onChange("focus",e.target.value)}/>
-          </div>
-          <div style={{gridColumn:"1 / -1"}}>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Main mistake or issue</div>
-            <input className="auth-input" style={{marginBottom:0}} placeholder="Too aggressive on throttle at corner exit" value={form.main_mistake} onChange={e=>onChange("main_mistake",e.target.value)}/>
-          </div>
-          <div style={{gridColumn:"1 / -1"}}>
-            <div style={{fontSize:12,color:"#888",marginBottom:6}}>Notes</div>
-            <textarea className="auth-input" rows="4" style={{marginBottom:0,resize:"vertical"}} placeholder="What worked, what did not, what you want to review next time..." value={form.notes} onChange={e=>onChange("notes",e.target.value)}/>
-          </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:12,padding:'8px 12px',borderRadius:999,background:'#111',border:'1px solid #222',color:'#aaa'}}>{items.length} total session{items.length!==1?'s':''}</span>
+          {selectedTrack&&<span style={{fontSize:12,padding:'8px 12px',borderRadius:999,background:'#1b1013',border:'1px solid #3b1c23',color:'#ff8aa5'}}>{selectedTrack}</span>}
         </div>
-
-        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginTop:14}}>
-          <button style={{...S.pri,marginTop:0,justifyContent:"center"}} onClick={submit} disabled={saving}>{saving?"Saving...":editingId?"Update session sheet":"Save session sheet"}</button>
-          {status&&<div style={{fontSize:12,color:status.toLowerCase().includes("could not")||status.toLowerCase().includes("please")?"#ef4444":"#22c55e"}}>{status}</div>}
-        </div>
-      </div>
-
-      <div style={{background:"#111",border:"1px solid #222",borderRadius:14,padding:16}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
-          <div style={{fontSize:16,fontWeight:700,color:"#e2e2e2"}}>Your saved session sheets</div>
-          <div style={{fontSize:12,color:"#666"}}>{items.length} saved</div>
-        </div>
-
-        {loading?<div style={{fontSize:13,color:"#888",padding:"10px 0"}}>Loading your session sheets...</div>:
-          items.length===0?<div style={{fontSize:13,color:"#888",lineHeight:1.7}}>No session sheets yet. Create your first dated entry above after your next practice session.</div>:
-          <div style={{display:"grid",gap:10}}>
-            {items.map(item=>(
-              <div key={item.id} style={{border:"1px solid #222",borderRadius:12,padding:14,background:"#0d0d0d"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:700,color:"#e2e2e2"}}>{item.track||"Untitled session"}{item.car?` · ${item.car}`:""}</div>
-                    <div style={{fontSize:12,color:"#666",marginTop:4}}>{item.session_date?new Date(item.session_date+"T12:00:00").toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):"No date"}</div>
-                  </div>
-                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    <button style={S.sec} onClick={()=>startEdit(item)}>Edit</button>
-                    <button style={{...S.sec,borderColor:"#ef444444",color:"#ef4444"}} onClick={()=>remove(item.id)}>Delete</button>
-                  </div>
-                </div>
-
-                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
-                  {item.best_lap&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff7b95",border:"1px solid #e11d4844"}}>Best lap: {item.best_lap}</span>}
-                  {item.average_lap&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:999,background:"#1a1a1a",color:"#bbb",border:"1px solid #2a2a2a"}}>Average lap: {item.average_lap}</span>}
-                </div>
-
-                {(item.focus||item.main_mistake||item.notes)&&<div style={{marginTop:12,display:"grid",gap:8}}>
-                  {item.focus&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Main focus</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7}}>{item.focus}</div></div>}
-                  {item.main_mistake&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Main mistake</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7}}>{item.main_mistake}</div></div>}
-                  {item.notes&&<div><div style={{fontSize:11,letterSpacing:1.4,color:"#888",textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:13,color:"#ddd",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{item.notes}</div></div>}
-                </div>}
-              </div>
-            ))}
-          </div>}
       </div>
     </div>
-  );
+
+    <div style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16,marginBottom:18}}>
+      <div style={{fontSize:12,fontWeight:700,color:'#888',letterSpacing:2,textTransform:'uppercase',marginBottom:10}}>Select a track</div>
+      <select value={selectedTrack} onChange={e=>{setSelectedTrack(e.target.value);setStatus('')}} style={{width:'100%',padding:'13px 14px',borderRadius:12,border:'1px solid #2d2d2d',background:'#0d0d0d',color:'#e2e2e2',fontSize:16,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}>
+        <option value="">Choose an ACC circuit</option>
+        {ACC_TRACKS.map(track=><option key={track} value={track}>{track}</option>)}
+      </select>
+      <div style={{fontSize:12,color:'#666',marginTop:10}}>One selected circuit = one chart, one focused entry form, one cleaner visual workflow.</div>
+    </div>
+
+    {!selectedTrack?<div style={{background:'#111',border:'1px dashed #2b2b2b',borderRadius:14,padding:28,textAlign:'center',color:'#888'}}><div style={{fontSize:42,marginBottom:8}}>🏁</div><div style={{fontSize:18,fontWeight:700,color:'#e2e2e2'}}>Pick a circuit to start</div><div style={{fontSize:13,lineHeight:1.7,maxWidth:520,margin:'8px auto 0'}}>Once you select a track, you will see only that circuit's development graph, session history, and entry form.</div></div>:(<>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:18}}>
+        <div style={S.stB}><div style={S.stBN}>{totalForTrack}</div><div style={S.stBL}>Sessions on {selectedTrack}</div></div>
+        <div style={S.stB}><div style={{...S.stBN,fontSize:26}}>{bestSeconds!=null?formatLapSeconds(bestSeconds):'—'}</div><div style={S.stBL}>Best logged lap</div></div>
+        <div style={S.stB}><div style={{...S.stBN,fontSize:22}}>{latestSession?.best_lap||latestSession?.average_lap||'—'}</div><div style={S.stBL}>Latest logged pace</div></div>
+      </div>
+      <LapProgressChart points={chartPoints} title={`${selectedTrack} · best lap curve`}/>
+      <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:18,marginBottom:12}}><div style={{fontSize:16,fontWeight:700,color:'#e2e2e2'}}>Session entries for {selectedTrack}</div><button style={{...S.sec,borderColor:'#e11d4844',color:'#ff7b9a'}} onClick={()=>{setShowForm(v=>!v);setStatus('');if(showForm&&editingId){setEditingId(null);setForm(emptyForm())}}}>{showForm?(editingId?'Close edit':'Hide form'):(editingId?'Edit entry':'Add session entry')}</button></div>
+      {showForm&&<div style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16,marginBottom:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:14}}><div><div style={{fontSize:17,fontWeight:700,color:'#e2e2e2'}}>{editingId?'Edit session entry':'New session entry'}</div><div style={{fontSize:12,color:'#666',marginTop:3}}>Track locked to <span style={{color:'#ff7b9a'}}>{selectedTrack}</span> so the page stays focused.</div></div>{editingId&&<button style={S.sec} onClick={resetForm}>Cancel edit</button>}</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Session date</div><input type='date' value={form.session_date} onChange={e=>onChange('session_date',e.target.value)} style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Car</div><input value={form.car} onChange={e=>onChange('car',e.target.value)} placeholder='e.g. Ferrari 296 GT3' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Best lap</div><input value={form.best_lap} onChange={e=>onChange('best_lap',e.target.value)} placeholder='1:48.532' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Average lap</div><input value={form.average_lap} onChange={e=>onChange('average_lap',e.target.value)} placeholder='1:49.104' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+        </div>
+        <div style={{display:'grid',gap:10,marginTop:10}}>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Session focus</div><textarea rows={2} value={form.focus} onChange={e=>onChange('focus',e.target.value)} placeholder='What were you working on in this session?' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif",resize:'vertical'}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Main mistake</div><textarea rows={2} value={form.main_mistake} onChange={e=>onChange('main_mistake',e.target.value)} placeholder='What hurt your pace or consistency the most?' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif",resize:'vertical'}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Notes</div><textarea rows={4} value={form.notes} onChange={e=>onChange('notes',e.target.value)} placeholder='Extra observations, setup changes, tyre notes, race sim comments...' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif",resize:'vertical'}}/></div>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><button style={{...S.pri,opacity:saving?0.85:1}} onClick={submit} disabled={saving}>{saving?(editingId?'Updating...':'Saving...'):(editingId?'Update session entry':'Save session entry')}</button><button style={S.sec} onClick={resetForm}>Clear</button></div>
+      </div>}
+      {status&&<div style={{fontSize:12,color:status.toLowerCase().includes('could not')||status.toLowerCase().includes('select')?'#fb7185':'#4ade80',marginBottom:14}}>{status}</div>}
+      <div style={{display:'grid',gap:10}}>{loading?<div style={{textAlign:'center',padding:20,color:'#777'}}>Loading development data...</div>:filteredItems.length===0?<div style={{padding:20,border:'1px dashed #2b2b2b',borderRadius:12,color:'#777'}}>No session entries yet for {selectedTrack}. Add one to start your development history.</div>:filteredItems.map(item=><div key={item.id} style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16}}><div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',flexWrap:'wrap'}}><div><div style={{fontSize:16,fontWeight:700,color:'#fff'}}>{item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'No date'}{item.car?` · ${item.car}`:''}</div><div style={{fontSize:12,color:'#666',marginTop:4}}>Track: {item.track||selectedTrack}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{item.best_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#251219',border:'1px solid #4c1d27',color:'#ff7b9a'}}>Best {item.best_lap}</span>}{item.average_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#171717',border:'1px solid #2a2a2a',color:'#bbb'}}>Avg {item.average_lap}</span>}</div></div>{(item.focus||item.main_mistake||item.notes)&&<div style={{display:'grid',gap:8,marginTop:12}}>{item.focus&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Focus</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.focus}</div></div>}{item.main_mistake&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Main mistake</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.main_mistake}</div></div>}{item.notes&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Notes</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd',whiteSpace:'pre-wrap'}}>{item.notes}</div></div>}</div>}<div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><button style={S.sec} onClick={()=>startEdit(item)}>Edit</button><button style={{...S.sec,borderColor:'#7f1d1d44',color:'#fb7185'}} onClick={()=>remove(item.id)}>Delete</button></div></div>)}</div>
+    </>)}</div>);
 }
 
-// ━━━ PROFILE (includes leaderboard) ━━━━━━━━━━━━━━━━━━━━━━━━━
 function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
   const[cfm,setCfm]=useState(false);const[showLB,setShowLB]=useState(false);const[lbData,setLbData]=useState([]);
   const loadLB=()=>{if(!showLB){setShowLB(true);sbGetLB().then(d=>setLbData(d))}else setShowLB(false)};
@@ -866,8 +902,6 @@ function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
     <div style={{...S.secT,marginTop:32}}><div style={S.rB}/>COURSE BREAKDOWN</div>
     {COURSES.map(c=>{const ch=c.levels.flatMap(l=>l.chapters);const d=ch.filter(x=>prog[x.id]?.completed).length;
       return<div key={c.id} style={S.prR}><span style={{fontSize:24}}>{c.icon}</span><div style={{flex:1}}><div style={{color:"#e2e2e2",fontSize:15,fontWeight:600}}>{c.title}</div><div style={{color:"#666",fontSize:13,marginTop:2}}>{d}/{ch.length}</div></div><div style={{...S.mBO,width:80}}><div style={{...S.mBI,width:Math.round((d/ch.length)*100)+"%"}}/></div></div>})}
-
-    <SessionJournal uid={uid}/>
 
     <button style={{...S.sec,width:"100%",justifyContent:"center",marginTop:24}} onClick={loadLB}>🏆 {showLB?"Hide":"Show"} Leaderboard</button>
     {showLB&&<div style={{marginTop:16}}>
