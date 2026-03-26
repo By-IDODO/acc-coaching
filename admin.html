@@ -166,7 +166,7 @@ const ADMIN_DEVELOPMENT_METRICS=[
   {value:'starting_position',label:'Position de départ'},
   {value:'finishing_position',label:'Position d’arrivée'},
   {value:'crash_count',label:'Nombre de crashs'},
-  {value:'crash_rate',label:'Taux de sessions avec crash'}
+  {value:'crash_rate',label:'Répartition crash / clean'}
 ];
 const getAdminDevelopmentMetricMeta=(metric)=>{
   switch(metric){
@@ -175,9 +175,9 @@ const getAdminDevelopmentMetricMeta=(metric)=>{
     case 'finishing_position':
       return {title:'Évolution des positions d’arrivée',empty:'Aucune donnée de position d’arrivée pour ce circuit.',statLabel:'Meilleure arrivée',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Arrivée P${point.rawValue}`};
     case 'crash_count':
-      return {title:'Évolution du nombre de crashs',empty:'Aucune donnée de crash pour ce circuit.',statLabel:'Crashs mini',format:v=>v!=null?`${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash${Math.round(point.rawValue)===1?'':'s'}`};
+      return {title:'Évolution du nombre de crashs',empty:'Aucune donnée de crash pour ce circuit.',statLabel:'Pic de crashs',format:v=>v!=null?`${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash${Math.round(point.rawValue)===1?'':'s'}`};
     case 'crash_rate':
-      return {title:'Taux de sessions avec crash',empty:'Aucune donnée de taux de crash pour ce circuit.',statLabel:'Taux actuel',format:v=>v!=null?`${Math.round(v)}%`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)}% de sessions avec crash`};
+      return {title:'Répartition sessions clean / crash',empty:'Aucune donnée de crash pour ce circuit.',statLabel:'Taux de crash',format:v=>v!=null?`${Math.round(v)}%`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} session avec crash`};
     case 'lap_time':
     default:
       return {title:'Courbe des meilleurs tours',empty:'Aucune donnée de chrono pour ce circuit.',statLabel:'Best',format:v=>formatLapSeconds(v),tooltip:point=>`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.rawValue)}`};
@@ -192,12 +192,10 @@ const buildTrackMetricSeries=(items,track,metric='lap_time')=>{const base=((item
   }))
   .sort((a,b)=>a.sortDate-b.sortDate));
   if(metric==='crash_rate'){
-    let crashedSessions=0;
-    return base.map((item,index)=>{
+    return base.map(item=>{
       const crashCount=Math.max(0,parseInt(item.crash_count,10)||0);
-      if(crashCount>0)crashedSessions+=1;
-      const value=(crashedSessions/(index+1))*100;
-      return {...item,value,rawValue:value};
+      const involved=crashCount>0?1:0;
+      return {...item,value:involved,rawValue:involved};
     });
   }
   return base.map(item=>{
@@ -212,24 +210,84 @@ const buildTrackMetricSeries=(items,track,metric='lap_time')=>{const base=((item
 function AdminDevelopmentMetricChart({points,title,metric='lap_time'}){
   const meta=getAdminDevelopmentMetricMeta(metric);
   if(!points||points.length===0)return <div style={{padding:16,border:'1px dashed var(--border)',borderRadius:12,fontSize:12,color:'var(--text3)'}}>{meta.empty}</div>;
+
+  if(metric==='crash_rate'){
+    const total=points.length;
+    const crashSessions=points.filter(point=>Math.max(0,parseInt(point.crash_count,10)||0)>0).length;
+    const cleanSessions=Math.max(0,total-crashSessions);
+    const crashPct=total?((crashSessions/total)*100):0;
+    const cleanPct=100-crashPct;
+    const radius=42;
+    const circumference=2*Math.PI*radius;
+    const crashArc=(crashPct/100)*circumference;
+    return <div style={{border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)',padding:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+        <div><div style={{fontSize:14,fontWeight:700,color:'var(--text1)'}}>{title||meta.title}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{total} session{total>1?'s':''}</div></div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#241617',border:'1px solid #462023',color:'#fca5a5'}}>Avec crash {Math.round(crashPct)}%</span>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#132018',border:'1px solid #214430',color:'#8ee7a8'}}>Clean {Math.round(cleanPct)}%</span>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'minmax(220px,280px) minmax(0,1fr)',gap:16,alignItems:'center'}}>
+        <div style={{display:'flex',justifyContent:'center'}}>
+          <svg viewBox='0 0 120 120' style={{width:'100%',maxWidth:220,height:'auto'}}>
+            <circle cx='60' cy='60' r={radius} fill='none' stroke='var(--surface3)' strokeWidth='14'/>
+            <circle
+              cx='60'
+              cy='60'
+              r={radius}
+              fill='none'
+              stroke='var(--accent)'
+              strokeWidth='14'
+              strokeDasharray={`${crashArc} ${circumference-crashArc}`}
+              strokeLinecap='round'
+              transform='rotate(-90 60 60)'
+            />
+            <circle cx='60' cy='60' r='28' fill='var(--bg)'/>
+            <text x='60' y='56' textAnchor='middle' fill='var(--text1)' fontSize='18' fontWeight='800'>{Math.round(crashPct)}%</text>
+            <text x='60' y='72' textAnchor='middle' fill='var(--text3)' fontSize='8'>crash rate</text>
+          </svg>
+        </div>
+        <div style={{display:'grid',gap:10}}>
+          <div style={{padding:'12px 14px',borderRadius:12,background:'var(--surface2)',border:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Sessions avec crash</div>
+            <div style={{fontSize:24,fontWeight:800,color:'#fca5a5'}}>{crashSessions}</div>
+          </div>
+          <div style={{padding:'12px 14px',borderRadius:12,background:'var(--surface2)',border:'1px solid var(--border)'}}>
+            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Sessions clean</div>
+            <div style={{fontSize:24,fontWeight:800,color:'#8ee7a8'}}>{cleanSessions}</div>
+          </div>
+          <div style={{fontSize:12,color:'var(--text3)',lineHeight:1.65}}>Vue synthétique du circuit sélectionné : sessions clean contre sessions avec au moins un crash loggé.</div>
+        </div>
+      </div>
+    </div>;
+  }
+
   if(points.length===1)return <div style={{padding:16,border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)'}}><div style={{fontSize:13,color:'var(--text2)',marginBottom:6}}>{title||meta.title}</div><div style={{fontSize:24,fontWeight:800,color:'var(--text1)'}}>{meta.format(points[0].rawValue)}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>Une seule session enregistrée le {points[0].dateLabel}.</div></div>;
   const width=100,height=58,pad={left:8,right:4,top:6,bottom:12};
   const values=points.map(p=>p.value);
   const min=Math.min(...values),max=Math.max(...values);
   const spread=Math.max(max-min,metric==='lap_time'?0.25:1);
   const stepX=(width-pad.left-pad.right)/Math.max(points.length-1,1);
-  const toY=(v)=>pad.top+((v-min)/spread)*(height-pad.top-pad.bottom);
+  const toY=(v)=>{
+    const ratio=(v-min)/spread;
+    if(metric==='crash_count'){
+      return pad.top+(1-ratio)*(height-pad.top-pad.bottom);
+    }
+    return pad.top+(ratio)*(height-pad.top-pad.bottom);
+  };
   const coords=points.map((point,index)=>({x:pad.left+stepX*index,y:toY(point.value),point}));
   const polyline=coords.map(p=>`${p.x},${p.y}`).join(' ');
   const latest=points[points.length-1];
   const first=points[0];
   const delta=latest.value-first.value;
+  const statValue=metric==='crash_count'?max:min;
   return <div style={{border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)',padding:14}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
       <div><div style={{fontSize:14,fontWeight:700,color:'var(--text1)'}}>{title||meta.title}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{points.length} session{points.length>1?'s':''}</div></div>
       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'var(--surface3)',border:'1px solid var(--border)',color:'var(--text2)'}}>{meta.statLabel} {meta.format(metric==='crash_rate'?latest.value:min)}</span>
-        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Progression':'Régression'} {metric==='lap_time'?`${Math.abs(delta).toFixed(3)}s`:metric==='crash_rate'?`${Math.abs(delta).toFixed(0)}%`:Math.abs(delta).toFixed(0)}</span>
+        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'var(--surface3)',border:'1px solid var(--border)',color:'var(--text2)'}}>{meta.statLabel} {meta.format(statValue)}</span>
+        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Progression':'Régression'} {metric==='lap_time'?`${Math.abs(delta).toFixed(3)}s`:Math.abs(delta).toFixed(0)}</span>
       </div>
     </div>
     <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:220,display:'block'}} preserveAspectRatio='none'>
