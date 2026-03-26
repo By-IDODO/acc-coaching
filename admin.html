@@ -238,6 +238,7 @@ function AdminApp() {
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginErr, setLoginErr] = useState("");
@@ -245,26 +246,46 @@ function AdminApp() {
   const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
 
   const save = useCallback(async () => {
-    // Refresh auth session first
-    await sb.auth.refreshSession();
-    // Save to localStorage (instant)
-    saveData(courses);
-    // Save to Supabase (propagates to all users)
+    if (isSaving) return;
+
+    setIsSaving(true);
+
     try {
-      const r1 = await sbSaveContent("courses", courses);
-      const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
-      const r2 = await sbSaveContent("settings", settings);
-      if(r1 && r2) {
-        showToast("Sauvegardé et synchronisé !");
-      } else {
-        showToast("Erreur synchro — essayez de vous reconnecter", "error");
+      console.log("[ADMIN SAVE] start", new Date().toISOString());
+
+      const { data: refreshData, error: refreshError } = await sb.auth.refreshSession();
+      if (refreshError || !refreshData?.session) {
+        console.error("[ADMIN SAVE] refresh session error:", refreshError);
+        showToast("Session expirée — reconnectez-vous", "error");
+        return;
       }
-      setHasChanges(false);
-    } catch(e) {
-      console.error("Save error:", e);
+
+      const localOk = saveData(courses);
+      if (!localOk) {
+        console.error("[ADMIN SAVE] localStorage save failed");
+        showToast("Erreur localStorage — sauvegarde annulée", "error");
+        return;
+      }
+
+      const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
+      const r1 = await sbSaveContent("courses", courses);
+      const r2 = await sbSaveContent("settings", settings);
+
+      if (r1 && r2) {
+        setHasChanges(false);
+        showToast("Sauvegardé et synchronisé !");
+        console.log("[ADMIN SAVE] success");
+      } else {
+        console.error("[ADMIN SAVE] sync failed", { coursesSaved: r1, settingsSaved: r2 });
+        showToast("Erreur synchro — reconnectez-vous", "error");
+      }
+    } catch (e) {
+      console.error("[ADMIN SAVE] unexpected error:", e);
       showToast("Erreur — reconnectez-vous", "error");
+    } finally {
+      setIsSaving(false);
     }
-  }, [courses]);
+  }, [courses, isSaving]);
 
   // Load latest from Supabase on admin login
   useEffect(() => {
@@ -377,8 +398,8 @@ function AdminApp() {
           </div>
         </div>
         <div className="sidebar-footer">
-          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={save}>
-            💾 {hasChanges ? "Enregistrer *" : "Enregistrer"}
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",opacity:isSaving?0.7:1,cursor:isSaving?"not-allowed":"pointer"}} onClick={save} disabled={isSaving}>
+            {isSaving ? "⏳ Sauvegarde..." : `💾 ${hasChanges ? "Enregistrer *" : "Enregistrer"}`}
           </button>
           <button className="btn btn-secondary" style={{width:"100%",justifyContent:"center"}} onClick={() => {
             const json = JSON.stringify(courses, null, 2);
@@ -416,7 +437,9 @@ function AdminApp() {
           </div>
           <div className="main-actions">
             {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Non sauvé</span>}
-            <button className="btn btn-primary" onClick={save}>💾 Sauvegarder</button>
+            <button className="btn btn-primary" onClick={save} disabled={isSaving} style={{opacity:isSaving?0.7:1,cursor:isSaving?"not-allowed":"pointer"}}>
+              {isSaving ? "⏳ Sauvegarde..." : "💾 Sauvegarder"}
+            </button>
           </div>
         </div>
         <div className="main-content">
