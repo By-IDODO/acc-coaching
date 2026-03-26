@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>ACC Coaching · Admin Panel</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>"/>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -123,6 +126,27 @@
 </head>
 <body>
 <div id="root"></div>
+<script>
+(function(){
+  const VERSION = "2026.03.26.3";
+  window.ADMIN_APP_VERSION = VERSION;
+  console.log("[ADMIN BOOT] version", VERSION);
+
+  try {
+    const url = new URL(window.location.href);
+    const currentVersion = url.searchParams.get("v");
+    const reloadKey = "admin-cache-bust-" + VERSION;
+
+    if (currentVersion !== VERSION && !sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, "1");
+      url.searchParams.set("v", VERSION);
+      window.location.replace(url.toString());
+    }
+  } catch (e) {
+    console.warn("[ADMIN BOOT] cache-bust skipped", e);
+  }
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
@@ -350,7 +374,7 @@ function AdminApp() {
       <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo"><span>⚙️</span><span>ACC Admin</span></div>
-          <div className="sidebar-sub">Gestion du contenu</div>
+          <div className="sidebar-sub">Gestion du contenu · v{window.ADMIN_APP_VERSION}</div>
         </div>
         <div className="sidebar-nav">
           <div className="nav-section">
@@ -446,6 +470,7 @@ function AdminApp() {
           </div>
           <div className="main-actions">
             {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Non sauvé</span>}
+            <span style={{fontSize:11,color:"var(--text3)"}}>v{window.ADMIN_APP_VERSION}</span>
             <button className="btn btn-primary" onClick={save} disabled={isSaving} style={{opacity:isSaving?0.7:1,cursor:isSaving?"not-allowed":"pointer"}}>
               {isSaving ? "⏳ Sauvegarde..." : "💾 Sauvegarder"}
             </button>
@@ -537,6 +562,15 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
               window.location.reload();
             }
           }}>🔄 Réinitialiser tout</button>
+          <button className="btn btn-secondary" onClick={() => {
+            try {
+              const url = new URL(window.location.href);
+              url.searchParams.set("v", window.ADMIN_APP_VERSION || Date.now().toString());
+              window.location.replace(url.toString());
+            } catch {
+              window.location.reload();
+            }
+          }}>♻️ Forcer la dernière version</button>
         </div>
       </div>
     </div>
