@@ -219,8 +219,8 @@ const saveData = (data) => {
   try { localStorage.setItem(DATA_KEY, JSON.stringify(data)); return true; } catch { return false; }
 };
 // Supabase content sync
-const sbLoadContent=async(key)=>{try{const{data}=await sb.from("app_content").select("data").eq("key",key).single();return data?.data||null}catch(e){return null}};
-const sbSaveContent=async(key,data)=>{await sb.from("app_content").upsert({key,data,updated_at:new Date().toISOString()})};
+const sbLoadContent=async(key)=>{try{const{data,error}=await sb.from("app_content").select("data").eq("key",key).maybeSingle();if(error)console.warn("Load error:",error);return data?.data||null}catch(e){console.warn("Load catch:",e);return null}};
+const sbSaveContent=async(key,val)=>{try{const{error}=await sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()});if(error){console.error("Save error:",error);return false}return true}catch(e){console.error("Save catch:",e);return false}};
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
@@ -249,14 +249,18 @@ function AdminApp() {
     saveData(courses);
     // Save to Supabase (propagates to all users)
     try {
-      await sbSaveContent("courses", courses);
-      // Also save settings
+      const r1 = await sbSaveContent("courses", courses);
       const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
-      await sbSaveContent("settings", settings);
-      showToast("Sauvegardé et synchronisé pour tous les utilisateurs !");
+      const r2 = await sbSaveContent("settings", settings);
+      if(r1 && r2) {
+        showToast("Sauvegardé et synchronisé !");
+      } else {
+        showToast("Sauvé en local. Erreur synchro Supabase — vérifiez la console (F12)", "error");
+      }
       setHasChanges(false);
     } catch(e) {
-      showToast("Erreur de synchronisation Supabase", "error");
+      console.error("Save error:", e);
+      showToast("Erreur de synchronisation", "error");
     }
   }, [courses]);
 
