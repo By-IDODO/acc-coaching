@@ -1,117 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-  <meta name="theme-color" content="#0a0a0a"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <title>ACC Coaching · Console Edition</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏁</text></svg>"/>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ACC Coaching · Admin Panel</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html,body,#root{min-height:100vh;background:#0a0a0a}
-    body{font-family:'Rajdhani','Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;font-size:16px}
-    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
-    ::selection{background:#e11d4844;color:#fff}
-    img.lesson-img{width:100%;border-radius:10px;border:1px solid #222;display:block}
-    img.quiz-img{width:100%;border-radius:8px;border:1px solid #222;margin-bottom:12px}
-    /* Bottom nav */
-    .bnav{position:fixed;bottom:0;left:0;right:0;background:#111;border-top:1px solid #222;display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-    .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;background:none;border:none;color:#666;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:color .15s}
-    .bnav button.on{color:#e11d48}
-    .bnav button svg{width:20px;height:20px}
-    /* Desktop: sidebar nav */
-    @media(min-width:1024px){
-      .bnav{position:fixed;left:0;top:0;bottom:0;right:auto;width:80px;flex-direction:column;border-top:none;border-right:1px solid #222;padding-bottom:0;padding-top:20px;gap:8px}
-      .bnav button{flex:none;padding:14px 0;gap:6px;font-size:9px}
-      .bnav button svg{width:24px;height:24px}
-      .app-shell{margin-left:80px}
-    }
-    @keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    .penter{animation:fi .25s ease}
-    .auth-card{background:#111;border:1px solid #222;border-radius:12px;padding:28px 24px;max-width:420px;margin:0 auto}
-    .auth-input{width:100%;padding:12px 16px;background:#0a0a0a;border:1px solid #222;border-radius:8px;color:#e2e2e2;font-size:14px;font-family:'Rajdhani',sans-serif;margin-bottom:12px;transition:border-color .15s}
-    .auth-input:focus{outline:none;border-color:#e11d48}
-    .auth-input::placeholder{color:#555}
-    .auth-err{color:#ef4444;font-size:12px;margin-bottom:12px;padding:8px 12px;background:#ef444415;border-radius:6px}
-    .lb-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:#111;border-radius:8px;margin-bottom:6px;border-left:3px solid transparent}
-    .lb-row.me{border-left-color:#e11d48;background:#1a0a0a}
-    .lb-rank{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
-    .vid-source{font-size:11px;color:#666;margin-top:6px;text-align:center;font-style:italic}
-    /* Courses grid */
-    .courses-grid{display:grid;gap:12px}
-    @media(min-width:640px){.courses-grid{grid-template-columns:1fr 1fr}}
-    @media(min-width:1200px){.courses-grid{grid-template-columns:1fr 1fr 1fr}}
-    /* Responsive screen container - FULL WIDTH on desktop */
-    .scr{max-width:100%;margin:0 auto;padding:20px 16px 80px}
-    @media(min-width:640px){.scr{padding:24px 32px 80px}}
-    @media(min-width:1024px){.scr{max-width:1200px;padding:32px 48px 40px}}
-    @media(min-width:1600px){.scr{max-width:1440px;padding:40px 60px 40px}}
-    /* Desktop font & element scaling */
-    @media(min-width:1024px){
-      body{font-size:16px}
-      .pg-title{font-size:34px!important}
-      .course-card-d{padding:22px!important}
-      .course-card-d .c-icon{width:56px!important;height:56px!important;font-size:36px!important}
-      .ch-card-d{padding:18px 22px!important}
-    }
-    @media(min-width:1400px){body{font-size:17px}}
-    /* Rich content blocks — sizes bumped up */
-    .block-text{font-size:17px;line-height:1.85;color:#ccc;margin-bottom:20px}
-    .block-heading{font-size:22px;font-weight:700;color:#e2e2e2;margin-bottom:12px;margin-top:28px}
-    .block-small{font-size:15px;line-height:1.75;color:#999;margin-bottom:16px}
-    .block-large{font-size:19px;line-height:1.9;color:#ddd;margin-bottom:22px}
-    .block-callout{font-size:17px;line-height:1.8;color:#ccc;margin-bottom:20px;padding:16px 20px;background:#111;border-left:3px solid #e11d48;border-radius:0 8px 8px 0}
-    @media(min-width:1024px){
-      .block-text{font-size:18px;line-height:1.9}
-      .block-heading{font-size:26px}
-      .block-small{font-size:16px}
-      .block-large{font-size:21px;line-height:1.95}
-      .block-callout{font-size:18px}
-    }
-    /* Desktop stat grid */
-    .stat-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media(min-width:768px){.stat-grid-4{grid-template-columns:1fr 1fr 1fr 1fr}}
-    /* Desktop lesson layout - centered with max width for readability */
-    .lesson-body{max-width:100%}
-    @media(min-width:1024px){.lesson-body{max-width:820px;margin:0 auto}}
-    /* Desktop chapter list - 2 columns */
-    .chapter-list{display:flex;flex-direction:column;gap:8px}
-    @media(min-width:768px){.chapter-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
-    /* Leaderboard desktop */
-    .lb-grid{display:flex;flex-direction:column;gap:6px}
-    @media(min-width:768px){.lb-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}}
-    /* Coaching page centered */
-    .coaching-body{max-width:100%}
-    @media(min-width:1024px){.coaching-body{max-width:720px;margin:0 auto}}
-    /* Progress card */
-    .progress-card-d{max-width:100%}
-    @media(min-width:1024px){.progress-card-d{max-width:700px}}
+    :root{--bg:#101114;--surface:#16171c;--surface2:#1c1d23;--surface3:#22232a;--border:#2a2b33;--border2:#35363f;--text:#e4e4e7;--text2:#9294a0;--text3:#62647080;--accent:#e11d48;--accent2:#ff3d6a;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;--radius:8px}
+    html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+    ::selection{background:var(--accent);color:#fff}
+    input,textarea,select,button{font-family:inherit;font-size:inherit}
+    .admin-layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+    @media(max-width:768px){.admin-layout{grid-template-columns:1fr}.sidebar{display:none}.sidebar.open{display:flex;position:fixed;inset:0;z-index:100;width:100%}}
+
+    /* Sidebar */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+    .sidebar-header{padding:20px;border-bottom:1px solid var(--border)}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+    .sidebar-logo span:first-child{font-size:20px}
+    .sidebar-logo span:last-child{font-size:18px;font-weight:700;color:var(--accent);letter-spacing:1px}
+    .sidebar-sub{font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase}
+    .sidebar-nav{flex:1;overflow-y:auto;padding:12px}
+    .nav-section{margin-bottom:16px}
+    .nav-section-title{font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;padding:8px 12px;font-weight:600}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);cursor:pointer;color:var(--text2);transition:all .15s;border:none;background:none;width:100%;text-align:left;font-size:13px}
+    .nav-item:hover{background:var(--surface2);color:var(--text)}
+    .nav-item.active{background:var(--accent)15;color:var(--accent);font-weight:600}
+    .nav-item .nav-icon{font-size:16px;width:24px;text-align:center}
+    .nav-item .nav-badge{margin-left:auto;font-size:11px;background:var(--surface3);padding:2px 8px;border-radius:10px;color:var(--text3)}
+
+    .sidebar-footer{padding:16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+
+    /* Main */
+    .main{overflow-y:auto;max-height:100vh}
+    .main-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);position:sticky;top:0;z-index:50}
+    .main-title{font-size:20px;font-weight:700}
+    .main-subtitle{font-size:12px;color:var(--text2);margin-top:2px}
+    .main-actions{display:flex;gap:8px;align-items:center}
+    .main-content{padding:28px}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-weight:600;font-size:13px;cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap}
+    .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{background:var(--accent2)}
+    .btn-secondary{background:var(--surface2);color:var(--text);border-color:var(--border)}.btn-secondary:hover{background:var(--surface3)}
+    .btn-ghost{background:transparent;color:var(--text2)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+    .btn-danger{background:transparent;color:var(--red);border-color:var(--red)30}.btn-danger:hover{background:var(--red)15}
+    .btn-sm{padding:5px 10px;font-size:12px}
+    .btn-icon{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border);cursor:pointer;color:var(--text2);transition:all .15s}
+    .btn-icon:hover{background:var(--surface3);color:var(--text)}
+
+    /* Cards */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+    .card-body{padding:20px}
+    .card+.card{margin-top:16px}
+
+    /* Form elements */
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+    .form-input{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;transition:border-color .15s}
+    .form-input:focus{outline:none;border-color:var(--accent)}
+    .form-input::placeholder{color:var(--text3)}
+    textarea.form-input{resize:vertical;min-height:80px;line-height:1.6}
+    select.form-input{cursor:pointer}
+
+    /* List items */
+    .list-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;background:var(--surface);transition:all .15s}
+    .list-item:hover{border-color:var(--border2);background:var(--surface2)}
+    .list-item .drag-handle{color:var(--text3);cursor:grab;font-size:16px;user-select:none}
+    .list-item .item-info{flex:1;min-width:0}
+    .list-item .item-title{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .list-item .item-sub{font-size:11px;color:var(--text3);margin-top:2px}
+    .list-item .item-actions{display:flex;gap:4px}
+    .list-item.dragging{opacity:.5;border-color:var(--accent)}
+
+    /* Color dot */
+    .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+    /* Tabs */
+    .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+    .tab{padding:10px 20px;cursor:pointer;color:var(--text2);font-weight:600;font-size:13px;border:none;background:none;border-bottom:2px solid transparent;transition:all .15s}
+    .tab:hover{color:var(--text)}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+    /* Toast */
+    .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--radius);color:#fff;font-weight:600;font-size:13px;z-index:999;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px}
+    .toast-success{background:var(--green)}
+    .toast-error{background:var(--red)}
+    @keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+    /* Quiz option row */
+    .quiz-option-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+    .quiz-option-row input{flex:1}
+    .quiz-option-correct{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent;transition:all .15s;flex-shrink:0}
+    .quiz-option-correct.is-correct{border-color:var(--green);background:var(--green)22;color:var(--green)}
+    .quiz-option-correct:hover{border-color:var(--green)}
+
+    /* Empty state */
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+    .empty-state .empty-icon{font-size:48px;margin-bottom:16px}
+    .empty-state .empty-text{font-size:15px;margin-bottom:8px;color:var(--text2)}
+    .empty-state .empty-sub{font-size:12px;margin-bottom:20px}
+
+    /* Paragraph block */
+    .para-block{position:relative;margin-bottom:8px}
+    .para-block textarea{padding-right:40px}
+    .para-block .para-delete{position:absolute;right:8px;top:8px}
+    .para-hint{font-size:11px;color:var(--text3);margin-top:4px;margin-bottom:12px}
+
+    /* Mobile menu button */
+    .mobile-menu-btn{display:none;position:fixed;bottom:20px;right:20px;z-index:90;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 20px #00000050}
+    @media(max-width:768px){.mobile-menu-btn{display:flex;align-items:center;justify-content:center}}
+
+    /* Status bar */
+    .status-bar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--green)10;border:1px solid var(--green)30;border-radius:var(--radius);margin-bottom:20px;font-size:12px;color:var(--green)}
+    .status-bar.warning{background:var(--yellow)10;border-color:var(--yellow)30;color:var(--yellow)}
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
 </head>
 <body>
 <div id="root"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
 <script type="text/babel">
-const{useState,useEffect,useCallback}=React;
+const { useState, useEffect, useCallback, useRef } = React;
 
 // ━━━ SUPABASE CONFIG ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const SUPABASE_URL = "https://datqrnbycspyicedbytv.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhdHFybmJ5Y3NweWljZWRieXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzOTQ2NjEsImV4cCI6MjA4OTk3MDY2MX0.Ig8UCea115dljwY6foaSID67JT9NWwk17XwAZFZU2Bk";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ━━━ DATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Load from localStorage cache first (instant), then update from Supabase
-const loadLocal=(key)=>{try{const c=localStorage.getItem(key);if(c)return JSON.parse(c)}catch(e){}return null};
-const saveLocal=(key,data)=>{try{localStorage.setItem(key,JSON.stringify(data))}catch(e){}};
+// ━━━ ADMIN EMAIL — Change this to YOUR email ━━━━━━━━━━━━━━━━
+const ADMIN_EMAIL = "dorian.castelli29@gmail.com";
 
-// Supabase content helpers
-const sbLoadContent=async(key)=>{try{const{data,error}=await sb.from("app_content").select("data").eq("key",key).maybeSingle();if(error)console.warn("Content load error:",error);return data?.data||null}catch(e){return null}};
-const sbSaveContent=async(key,val)=>{try{const{error}=await sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()});if(error)console.error("Content save error:",error)}catch(e){}};
+// ─── STORAGE ──────────────────────────────────────────────────
+const DATA_KEY = "acc-coaching-courses";
+const PROGRESS_KEY = "acc-coaching-progress";
+
 const DEFAULT_COURSES=[
 {id:"pilotage",title:"Pure Driving",icon:"🏎️",desc:"Master the fundamentals of driving on ACC Console",levels:[
 {level:"Beginner",color:"#22c55e",chapters:[
@@ -182,484 +212,726 @@ const DEFAULT_COURSES=[
 ]}
 ]}
 ];
-// Start with local cache or defaults, will be updated from Supabase
-let COURSES=loadLocal("acc-coaching-courses")||DEFAULT_COURSES;
-let SETTINGS=loadLocal("acc-coaching-settings")||{};
-let COACH_DATA=SETTINGS.coaching||{title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach. We'll analyze your driving, work on specific techniques, and create a personalized improvement plan.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
-let HOME_LAYOUT=SETTINGS.homeLayout||["nextLesson","courses"];
-
-// Async: fetch latest from Supabase and update
-const refreshContent=async()=>{
-  const courses=await sbLoadContent("courses");
-  if(courses){COURSES=courses;saveLocal("acc-coaching-courses",courses)}
-  const settings=await sbLoadContent("settings");
-  if(settings){SETTINGS=settings;saveLocal("acc-coaching-settings",settings);COACH_DATA=settings.coaching||COACH_DATA;HOME_LAYOUT=settings.homeLayout||HOME_LAYOUT}
+const loadData = () => {
+  try { const d = localStorage.getItem(DATA_KEY); return d ? JSON.parse(d) : null; } catch { return null; }
 };
-
-const defProg=()=>{const p={};COURSES.forEach(c=>c.levels.forEach(l=>l.chapters.forEach(ch=>{p[ch.id]={completed:false,quizScore:null,bestScore:null}})));return p};
-
-// ━━━ SUPABASE HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const sbSaveProg=async(uid,data)=>{await sb.from("progress").upsert({id:uid,data,updated_at:new Date().toISOString()})};
-const sbLoadProg=async(uid)=>{const{data}=await sb.from("progress").select("data").eq("id",uid).single();return data?.data||null};
-const sbUpdateLB=async(uid,name,prog)=>{
-  const all=COURSES.flatMap(c=>c.levels.flatMap(l=>l.chapters));
-  const completed=all.filter(ch=>prog[ch.id]?.completed).length;const total=all.length;
-  const scores=all.filter(ch=>prog[ch.id]?.bestScore!=null).map(ch=>prog[ch.id].bestScore);
-  const avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0;
-  await sb.from("leaderboard").upsert({id:uid,display_name:name,completed,total,avg_score:avg,percent:Math.round((completed/total)*100),updated_at:new Date().toISOString()});
+const saveData = (data) => {
+  try { localStorage.setItem(DATA_KEY, JSON.stringify(data)); return true; } catch { return false; }
 };
-const sbGetLB=async()=>{const{data}=await sb.from("leaderboard").select("*").order("completed",{ascending:false}).limit(50);return data||[]};
-const sbGetProfile=async(uid)=>{const{data}=await sb.from("profiles").select("*").eq("id",uid).single();return data};
+// Supabase content sync
+const sbLoadContent=async(key)=>{try{const{data,error}=await sb.from("app_content").select("data").eq("key",key).maybeSingle();if(error)console.warn("Load error:",error);return data?.data||null}catch(e){console.warn("Load catch:",e);return null}};
+const sbSaveContent=async(key,val)=>{try{const{error}=await sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()});if(error){console.error("Save error:",error);return false}return true}catch(e){console.error("Save catch:",e);return false}};
 
-// ━━━ MATCHMAKING HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const sbSetAvailable=async(uid,name,avail)=>{await sb.from("matchmaking").upsert({id:uid,display_name:name,available:avail,matched_with:null,updated_at:new Date().toISOString()})};
-const sbGetAvailable=async(uid)=>{const{data}=await sb.from("matchmaking").select("*").eq("available",true).neq("id",uid);return data||[]};
-const sbMatchWith=async(myId,theirId)=>{
-  await sb.from("matchmaking").update({available:false,matched_with:theirId,updated_at:new Date().toISOString()}).eq("id",myId);
-  await sb.from("matchmaking").update({available:false,matched_with:myId,updated_at:new Date().toISOString()}).eq("id",theirId);
-};
-const sbGetMyMatch=async(uid)=>{const{data}=await sb.from("matchmaking").select("*").eq("id",uid).single();return data};
-const sbClearMatch=async(uid)=>{await sb.from("matchmaking").update({available:false,matched_with:null}).eq("id",uid)};
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
-// ━━━ ICONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const CkI=()=><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const PlI=()=><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 3.5L14.5 9L5 14.5V3.5Z" fill="currentColor"/></svg>;
-const BkI=()=><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 15L7 10L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const TrI=()=><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 21h8m-4-4v4m-5-8c-1.5-.5-3-1.5-3-4V4h16v5c0 2.5-1.5 3.5-3 4m-10 0h10m-10 0c0 2 2 4 5 4s5-2 5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvH=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-2 0h2" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvC=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422A12 12 0 0121 12.5V17l-9 5-9-5v-4.5c0-.97.26-1.88.84-2.922L12 14z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvL=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvP=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvQ=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-const NvPl=({c})=><svg viewBox="0 0 24 24" fill="none"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+// ─── TOAST ────────────────────────────────────────────────────
+function Toast({ message, type, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+  return <div className={`toast toast-${type}`}>{type === "success" ? "✓" : "✗"} {message}</div>;
+}
 
-const renderBlock=(block,i)=>{
-  // Image block
-  if(typeof block==="object"&&block.type==="image")return<div key={i} style={{marginBottom:18}}><img className="lesson-img" src={block.url} alt={block.caption||""}/>{block.caption&&<div style={{fontSize:13,color:"#666",marginTop:6,textAlign:"center"}}>{block.caption}</div>}</div>;
-  // Heading block
-  if(typeof block==="object"&&block.type==="heading")return<div key={i} className="block-heading">{block.value||""}</div>;
-  // Callout block
-  if(typeof block==="object"&&block.type==="callout"){const t=block.value||"";return<div key={i} className="block-callout">{t.split("**").map((p,j)=>j%2===1?<span key={j} style={{color:"#e11d48",fontWeight:700}}>{p}</span>:<span key={j}>{p}</span>)}</div>}
-  // Text block (with optional size: small, normal, large)
-  const isObj=typeof block==="object";
-  const text=isObj?(block.value||""):(typeof block==="string"?block:"");
-  const size=isObj?block.size:"normal";
-  const cls=size==="small"?"block-small":size==="large"?"block-large":"block-text";
-  return<div key={i} className={cls}>{text.split("**").map((p,j)=>j%2===1?<span key={j} style={{color:"#e11d48",fontWeight:700}}>{p}</span>:<span key={j}>{p}</span>)}</div>;
-};
+// ─── APP ──────────────────────────────────────────────────────
+function AdminApp() {
+  const [authUser, setAuthUser] = useState(undefined);
+  const [courses, setCourses] = useState(() => loadData() || JSON.parse(JSON.stringify(DEFAULT_COURSES)));
+  const [selected, setSelected] = useState({ type:"dashboard" });
+  const [toast, setToast] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginErr, setLoginErr] = useState("");
 
-// ━━━ STYLES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const S={
-  app:{minHeight:"100vh",background:"#0a0a0a",color:"#e2e2e2",fontFamily:"'Rajdhani','Segoe UI',sans-serif",position:"relative",paddingBottom:70},
-  scan:{position:"fixed",inset:0,pointerEvents:"none",background:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)",zIndex:999},
-  scr:"scr", // CSS class handles responsive widths
-  hdr:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
-  logoR:{display:"flex",alignItems:"baseline",gap:8},logoT:{fontSize:32,fontWeight:900,letterSpacing:3,color:"#e11d48"},logoS:{fontSize:14,fontWeight:600,letterSpacing:6,color:"#666",textTransform:"uppercase"},tag:{fontSize:12,color:"#444",letterSpacing:3,textTransform:"uppercase",marginTop:2},
-  pCard:{background:"linear-gradient(135deg,#111 0%,#1a0a0a 100%)",border:"1px solid #2a1515",borderRadius:12,padding:20,marginBottom:28},
-  pH:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14},pL:{fontSize:13,letterSpacing:3,color:"#666",fontWeight:700},pP:{fontSize:34,fontWeight:900,color:"#e11d48"},
-  pBO:{height:6,background:"#1a1a1a",borderRadius:3,overflow:"hidden",marginBottom:16},pBI:{height:"100%",background:"linear-gradient(90deg,#e11d48,#ff4d6a)",borderRadius:3,position:"relative",transition:"width 0.8s ease"},pG:{position:"absolute",right:0,top:-2,bottom:-2,width:20,background:"radial-gradient(circle,#ff4d6a88,transparent)",borderRadius:"50%"},
-  pSt:{display:"flex",alignItems:"center",justifyContent:"space-around"},sI:{textAlign:"center"},sN:{display:"block",fontSize:26,fontWeight:800,color:"#e2e2e2"},sL:{fontSize:12,color:"#666",letterSpacing:1,textTransform:"uppercase"},sD:{width:1,height:34,background:"#222"},
-  secT:{display:"flex",alignItems:"center",gap:10,fontSize:14,fontWeight:700,letterSpacing:3,color:"#666",marginBottom:18,textTransform:"uppercase"},rB:{width:3,height:18,background:"#e11d48",borderRadius:2},
-  cCard:{display:"block",width:"100%",background:"#111",border:"1px solid #2a2a2a",borderRadius:12,padding:20,marginBottom:14,cursor:"pointer",textAlign:"left",color:"#e2e2e2",fontFamily:"'Rajdhani',sans-serif",transition:"all 0.2s ease"},
-  cTop:{display:"flex",alignItems:"center",gap:16},cIcon:{fontSize:36,width:56,height:56,background:"#1a1a1a",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center"},
-  cTi:{fontSize:20,fontWeight:700},cDe:{fontSize:14,color:"#888",marginTop:3},cAr:{fontSize:30,color:"#444"},
-  cMeta:{display:"flex",alignItems:"center",gap:10,marginTop:12,paddingTop:12,borderTop:"1px solid #1a1a1a"},cCnt:{fontSize:11,color:"#666",minWidth:80},
-  mBO:{flex:1,height:3,background:"#1a1a1a",borderRadius:2,overflow:"hidden"},mBI:{height:"100%",background:"linear-gradient(90deg,#e11d48,#ff4d6a)",borderRadius:2,transition:"width 0.5s ease"},cPct:{fontSize:12,fontWeight:700,color:"#e11d48",minWidth:32,textAlign:"right"},
-  nxC:{display:"block",width:"100%",background:"#111",border:"1px solid #dc262630",borderRadius:10,padding:18,marginTop:20,cursor:"pointer",textAlign:"left",color:"#e2e2e2",fontFamily:"'Rajdhani',sans-serif",transition:"all 0.2s ease"},
-  nxL:{fontSize:10,letterSpacing:3,color:"#e11d48",fontWeight:700,marginBottom:6},nxT:{fontSize:16,fontWeight:700},nxS:{fontSize:12,color:"#888",marginTop:4},nxB:{display:"inline-flex",alignItems:"center",gap:6,marginTop:12,padding:"8px 18px",background:"#e11d48",color:"#fff",borderRadius:6,fontSize:13,fontWeight:700,letterSpacing:1},
-  bkB:{display:"inline-flex",alignItems:"center",gap:4,background:"none",border:"none",color:"#888",fontSize:14,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer",padding:"4px 0",marginBottom:16},
-  pgT:{fontSize:28,fontWeight:800,color:"#e2e2e2"},pgS:{fontSize:15,color:"#888",marginTop:3},
-  lvH:{display:"flex",alignItems:"center",gap:10,marginBottom:12},lvB:{display:"flex",alignItems:"center",padding:"4px 14px",borderRadius:20,border:"1px solid",fontSize:12,fontWeight:700,letterSpacing:1,textTransform:"uppercase"},lvC:{fontSize:12,color:"#666"},
-  chC:{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"#111",border:"none",borderLeft:"4px solid",borderRadius:10,padding:"18px 20px",marginBottom:10,cursor:"pointer",textAlign:"left",color:"#e2e2e2",fontFamily:"'Rajdhani',sans-serif",transition:"background 0.2s ease"},
-  chL:{display:"flex",alignItems:"center",gap:14,flex:1},chN:{width:36,height:36,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,flexShrink:0},
-  chT:{fontSize:17,fontWeight:700},chD:{fontSize:13,color:"#888",marginTop:3},scB:{padding:"4px 12px",background:"#22c55e22",color:"#22c55e",borderRadius:20,fontSize:14,fontWeight:700},
-  tabs:{display:"flex",gap:0,marginTop:20,marginBottom:20,borderBottom:"1px solid #222"},tab:{flex:1,padding:12,background:"none",border:"none",borderBottom:"2px solid transparent",color:"#666",fontSize:14,fontWeight:700,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer",letterSpacing:1,transition:"all 0.2s ease"},tabA:{color:"#e11d48",borderBottomColor:"#e11d48"},
-  vidP:{width:"100%",aspectRatio:"16/9",background:"linear-gradient(135deg,#111,#1a0a0a)",border:"1px solid #222",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:24},
-  para:{fontSize:14,lineHeight:1.7,color:"#ccc",marginBottom:16},bold:{color:"#e11d48",fontWeight:700},
-  qzI:{fontSize:15,color:"#888",marginBottom:24,padding:"14px 18px",background:"#111",borderRadius:8,borderLeft:"3px solid #e11d48"},qC:{background:"#111",borderRadius:12,padding:24,marginBottom:18},
-  qN:{fontSize:12,letterSpacing:2,color:"#e11d48",fontWeight:700,marginBottom:10,textTransform:"uppercase"},qT:{fontSize:18,fontWeight:600,color:"#e2e2e2",marginBottom:18,lineHeight:1.5},
-  oB:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px 16px",background:"#0a0a0a",border:"1px solid #222",borderRadius:10,color:"#ccc",fontSize:15,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer",textAlign:"left",transition:"all 0.15s ease",marginBottom:10},oS:{borderColor:"#e11d48",background:"#e11d4810",color:"#e2e2e2"},
-  oL:{width:30,height:30,borderRadius:"50%",background:"#1a1a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#666",flexShrink:0},oLS:{background:"#e11d48",color:"#fff"},
-  rCir:{width:150,height:150,borderRadius:"50%",border:"4px solid",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",margin:"24px auto",background:"#0a0a0a"},
-  rMsg:{fontSize:26,fontWeight:800,marginTop:10},rSub:{fontSize:15,color:"#888",marginTop:10,maxWidth:340,marginLeft:"auto",marginRight:"auto"},rvC:{textAlign:"left",background:"#111",borderRadius:10,borderLeft:"4px solid",padding:"14px 18px",marginBottom:10},
-  pri:{display:"inline-flex",alignItems:"center",gap:8,padding:"14px 32px",background:"linear-gradient(135deg,#e11d48,#be123c)",color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:700,fontFamily:"'Rajdhani',sans-serif",letterSpacing:1,cursor:"pointer",marginTop:16},
-  sec:{display:"inline-flex",alignItems:"center",gap:8,padding:"12px 24px",background:"transparent",color:"#e2e2e2",border:"1px solid #333",borderRadius:10,fontSize:15,fontWeight:600,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer"},
-  prAv:{width:80,height:80,borderRadius:"50%",border:"3px solid #e11d48",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",background:"#111"},
-  stG:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12},stB:{background:"#111",borderRadius:12,padding:20,textAlign:"center",border:"1px solid #1a1a1a"},stBN:{fontSize:32,fontWeight:900,color:"#e11d48"},stBL:{fontSize:13,color:"#666",letterSpacing:1,textTransform:"uppercase",marginTop:6},
-  prR:{display:"flex",alignItems:"center",gap:16,padding:"18px 0",borderBottom:"1px solid #1a1a1a"},
-};
+  const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
 
-// ━━━ AUTH SCREEN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function AuthScreen(){
-  const[mode,setMode]=useState("login");const[email,setEmail]=useState("");const[pass,setPass]=useState("");const[name,setName]=useState("");const[err,setErr]=useState("");const[loading,setLoading]=useState(false);
-  const handle=async()=>{
-    setErr("");setLoading(true);
-    try{
-      if(mode==="signup"){
-        const{data,error}=await sb.auth.signUp({email,password:pass,options:{data:{display_name:name||email.split("@")[0]}}});
-        if(error)throw error;
-      }else{
-        const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
-        if(error)throw error;
+  const save = useCallback(async () => {
+    // Refresh auth session first
+    await sb.auth.refreshSession();
+    // Save to localStorage (instant)
+    saveData(courses);
+    // Save to Supabase (propagates to all users)
+    try {
+      const r1 = await sbSaveContent("courses", courses);
+      const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
+      const r2 = await sbSaveContent("settings", settings);
+      if(r1 && r2) {
+        showToast("Sauvegardé et synchronisé !");
+      } else {
+        showToast("Erreur synchro — essayez de vous reconnecter", "error");
       }
-    }catch(e){setErr(e.message||"An error occurred")}
-    setLoading(false);
+      setHasChanges(false);
+    } catch(e) {
+      console.error("Save error:", e);
+      showToast("Erreur — reconnectez-vous", "error");
+    }
+  }, [courses]);
+
+  // Load latest from Supabase on admin login
+  useEffect(() => {
+    sb.auth.getSession().then(({data:{session}})=>{setAuthUser(session?.user||null)});
+    const{data:{subscription}}=sb.auth.onAuthStateChange(async(_,session)=>{
+      setAuthUser(session?.user||null);
+      if(session?.user){
+        const remoteCourses=await sbLoadContent("courses");
+        if(remoteCourses){setCourses(remoteCourses);saveData(remoteCourses)}
+        const remoteSettings=await sbLoadContent("settings");
+        if(remoteSettings){localStorage.setItem("acc-coaching-settings",JSON.stringify(remoteSettings))}
+      }
+    });
+    return()=>subscription.unsubscribe();
+  }, []);
+
+  const updateCourses = (fn) => {
+    setCourses(prev => { const next = JSON.parse(JSON.stringify(prev)); fn(next); return next; });
+    setHasChanges(true);
   };
-  return(
-    <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",padding:20,paddingBottom:20}}>
-      <div style={{width:"100%",maxWidth:400}}>
-        <div style={{textAlign:"center",marginBottom:32}}><div style={{fontSize:48,marginBottom:12}}>🏁</div><div style={{display:"flex",justifyContent:"center"}}><span style={S.logoT}>ACC</span></div><div style={{...S.logoS,textAlign:"center",marginTop:4}}>COACHING</div><div style={S.tag}>Console Edition</div></div>
-        <div className="auth-card">
-          <div style={{fontSize:18,fontWeight:700,marginBottom:20,textAlign:"center"}}>{mode==="login"?"Sign In":"Create Account"}</div>
-          {err&&<div className="auth-err">{err}</div>}
-          {mode==="signup"&&<input className="auth-input" placeholder="Gamertag / Display Name" value={name} onChange={e=>setName(e.target.value)}/>}
-          <input className="auth-input" type="email" placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)}/>
-          <input className="auth-input" type="password" placeholder="Password (min 6 characters)" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()}/>
-          <button style={{...S.pri,width:"100%",justifyContent:"center",marginTop:8,opacity:loading?.6:1}} onClick={handle} disabled={loading}>{loading?"...":(mode==="login"?"Sign In":"Create Account")}</button>
-          <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"#888"}}>{mode==="login"?"Don't have an account?":"Already have an account?"}{" "}<button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700,fontFamily:"'Rajdhani',sans-serif",fontSize:13}} onClick={()=>{setMode(mode==="login"?"signup":"login");setErr("")}}>{mode==="login"?"Sign Up":"Sign In"}</button></div>
+
+  const nav = (sel) => { setSelected(sel); setSidebarOpen(false); };
+
+  // Count helpers
+  const totalChapters = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
+  const totalQuiz = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
+
+  function doLogin(){
+    setLoginErr("");
+    sb.auth.signInWithPassword({email:loginEmail,password:loginPass}).then(({error})=>{if(error)setLoginErr(error.message)});
+  }
+
+  // Auth gate: must be logged in with admin email
+  if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Chargement...</div></div></div>;
+  if (authUser === null || authUser.email !== ADMIN_EMAIL) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif",padding:20}}>
+      <div style={{maxWidth:380,width:"100%"}}>
+        <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔒</div><div style={{fontSize:20,fontWeight:700}}>Admin Panel</div><div style={{fontSize:12,color:"#9294a0",marginTop:4}}>Connexion requise — accès réservé à l'administrateur</div></div>
+        <div style={{background:"#16171c",border:"1px solid #2a2b33",borderRadius:12,padding:24}}>
+          {loginErr && <div style={{color:"#ef4444",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#ef444415",borderRadius:6}}>{loginErr}</div>}
+          {authUser && authUser.email !== ADMIN_EMAIL && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} n'est pas autorisé. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Se déconnecter</button></div>}
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:10}} type="email" placeholder="Email admin" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/>
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:12}} type="password" placeholder="Mot de passe" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={doLogin}>Se connecter</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="admin-layout">
+      {/* Sidebar */}
+      <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo"><span>⚙️</span><span>ACC Admin</span></div>
+          <div className="sidebar-sub">Gestion du contenu</div>
+        </div>
+        <div className="sidebar-nav">
+          <div className="nav-section">
+            <div className="nav-section-title">Navigation</div>
+            <button className={`nav-item ${selected.type==="dashboard"?"active":""}`} onClick={()=>nav({type:"dashboard"})}>
+              <span className="nav-icon">📊</span> Dashboard
+            </button>
+            <button className={`nav-item ${selected.type==="users"?"active":""}`} onClick={()=>nav({type:"users"})}>
+              <span className="nav-icon">👥</span> Utilisateurs
+            </button>
+            <button className={`nav-item ${selected.type==="coaching"?"active":""}`} onClick={()=>nav({type:"coaching"})}>
+              <span className="nav-icon">🎯</span> Page Coaching
+            </button>
+            <button className={`nav-item ${selected.type==="homeLayout"?"active":""}`} onClick={()=>nav({type:"homeLayout"})}>
+              <span className="nav-icon">🏠</span> Layout Accueil
+            </button>
+          </div>
+          {courses.map((course, ci) => (
+            <div key={course.id} className="nav-section">
+              <div className="nav-section-title">{course.icon} {course.title}</div>
+              <button className={`nav-item ${selected.type==="course"&&selected.ci===ci?"active":""}`} onClick={()=>nav({type:"course",ci})}>
+                <span className="nav-icon">📝</span> Infos du parcours
+              </button>
+              {course.levels.map((level, li) => (
+                <div key={li}>
+                  {level.chapters.map((ch, chi) => (
+                    <button key={ch.id} className={`nav-item ${selected.type==="chapter"&&selected.ci===ci&&selected.li===li&&selected.chi===chi?"active":""}`}
+                      onClick={()=>nav({type:"chapter",ci,li,chi})}>
+                      <span className="nav-icon"><span className="color-dot" style={{background:level.color,display:"inline-block"}}/></span>
+                      <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ch.title}</span>
+                    </button>
+                  ))}
+                  <button className="nav-item" style={{color:"var(--accent)",fontSize:12}} onClick={() => {
+                    updateCourses(d => {
+                      d[ci].levels[li].chapters.push({ id:uid(), title:"Nouveau chapitre", desc:"Description...", videoUrl:"", content:["Contenu de la leçon..."], quiz:[] });
+                    });
+                    const newChi = course.levels[li].chapters.length; // will be length after push
+                    setTimeout(() => nav({type:"chapter",ci,li,chi:newChi}), 50);
+                  }}>
+                    <span className="nav-icon">+</span> Ajouter chapitre
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="nav-section">
+            <button className="nav-item" style={{color:"var(--accent)"}} onClick={() => {
+              updateCourses(d => {
+                d.push({ id:uid(), title:"Nouveau parcours", icon:"📚", desc:"Description du parcours", levels:[{level:"Débutant",color:"#22c55e",chapters:[]}] });
+              });
+            }}>
+              <span className="nav-icon">+</span> Nouveau parcours
+            </button>
+          </div>
+        </div>
+        <div className="sidebar-footer">
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={save}>
+            💾 {hasChanges ? "Enregistrer *" : "Enregistrer"}
+          </button>
+          <button className="btn btn-secondary" style={{width:"100%",justifyContent:"center"}} onClick={() => {
+            const json = JSON.stringify(courses, null, 2);
+            const blob = new Blob([json], {type:"application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = "acc-coaching-data.json"; a.click();
+            URL.revokeObjectURL(url);
+            showToast("Export téléchargé !");
+          }}>
+            📥 Exporter JSON
+          </button>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="main">
+        <div className="main-header">
+          <div>
+            <div className="main-title">
+              {selected.type === "dashboard" && "Dashboard"}
+              {selected.type === "users" && "Utilisateurs"}
+              {selected.type === "coaching" && "Page Coaching"}
+              {selected.type === "homeLayout" && "Layout Accueil"}
+              {selected.type === "course" && courses[selected.ci]?.title}
+              {selected.type === "chapter" && courses[selected.ci]?.levels[selected.li]?.chapters[selected.chi]?.title}
+            </div>
+            <div className="main-subtitle">
+              {selected.type === "dashboard" && `${courses.length} parcours · ${totalChapters} chapitres · ${totalQuiz} questions`}
+              {selected.type === "users" && "Gestion des comptes et accès premium"}
+              {selected.type === "coaching" && "Modifier les textes de la page coaching"}
+              {selected.type === "homeLayout" && "Réordonner les blocs de la page d'accueil et les parcours"}
+              {selected.type === "course" && "Paramètres du parcours"}
+              {selected.type === "chapter" && `${courses[selected.ci]?.title} › ${courses[selected.ci]?.levels[selected.li]?.level}`}
+            </div>
+          </div>
+          <div className="main-actions">
+            {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Non sauvé</span>}
+            <button className="btn btn-primary" onClick={save}>💾 Sauvegarder</button>
+          </div>
+        </div>
+        <div className="main-content">
+          {selected.type === "dashboard" && <DashboardView courses={courses} nav={nav} updateCourses={updateCourses} showToast={showToast}/>}
+          {selected.type === "users" && <UsersView showToast={showToast}/>}
+          {selected.type === "coaching" && <CoachingEditor showToast={showToast}/>}
+          {selected.type === "homeLayout" && <HomeLayoutEditor courses={courses} updateCourses={updateCourses} showToast={showToast}/>}
+          {selected.type === "course" && <CourseEditor courses={courses} ci={selected.ci} updateCourses={updateCourses} nav={nav} showToast={showToast}/>}
+          {selected.type === "chapter" && <ChapterEditor courses={courses} ci={selected.ci} li={selected.li} chi={selected.chi} updateCourses={updateCourses} showToast={showToast}/>}
+        </div>
+      </div>
+
+      <button className="mobile-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+      {toast && <Toast key={toast.key} message={toast.message} type={toast.type} onDone={() => setToast(null)}/>}
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+function DashboardView({ courses, nav, updateCourses, showToast }) {
+  const fileRef = useRef();
+  const totalCh = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
+  const totalQ = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
+
+  const handleImport = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data) && data[0]?.levels) {
+          updateCourses(() => {}); // trigger change
+          localStorage.setItem("acc-coaching-courses", JSON.stringify(data));
+          window.location.reload();
+        } else { showToast("Format JSON invalide", "error"); }
+      } catch { showToast("Erreur de lecture JSON", "error"); }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{courses.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PARCOURS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalCh}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>CHAPITRES</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{totalQ}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>QUESTIONS QUIZ</div></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><div className="card-title">📚 Parcours</div>
+          <button className="btn btn-sm btn-primary" onClick={() => {
+            updateCourses(d => d.push({id:uid(),title:"Nouveau parcours",icon:"📚",desc:"Description",levels:[{level:"Débutant",color:"#22c55e",chapters:[]}]}));
+          }}>+ Ajouter</button>
+        </div>
+        <div className="card-body">
+          {courses.map((c, ci) => (
+            <div key={c.id} className="list-item">
+              <span style={{fontSize:24}}>{c.icon}</span>
+              <div className="item-info">
+                <div className="item-title">{c.title}</div>
+                <div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres · {c.levels.length} niveaux</div>
+              </div>
+              <div className="item-actions">
+                <button className="btn-icon" onClick={()=>nav({type:"course",ci})} title="Modifier">✏️</button>
+                <button className="btn-icon" onClick={()=>{if(confirm("Supprimer ce parcours ?"))updateCourses(d=>d.splice(ci,1))}} title="Supprimer">🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:16}}>
+        <div className="card-header"><div className="card-title">🔧 Outils</div></div>
+        <div className="card-body" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Importer JSON</button>
+          <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={handleImport}/>
+          <button className="btn btn-secondary" onClick={() => {
+            const json = JSON.stringify(courses, null, 2);
+            const blob = new Blob([json], {type:"application/json"});
+            const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href=url; a.download="acc-coaching-data.json"; a.click();
+          }}>📥 Exporter JSON</button>
+          <button className="btn btn-danger" onClick={() => {
+            if (confirm("⚠️ Réinitialiser TOUT le contenu aux valeurs par défaut ? Cette action est irréversible.")) {
+              localStorage.removeItem(DATA_KEY);
+              localStorage.removeItem(PROGRESS_KEY);
+              window.location.reload();
+            }
+          }}>🔄 Réinitialiser tout</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ━━━ MAIN APP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function App(){
-  const[user,setUser]=useState(undefined);
-  const[prog,setProg]=useState(defProg());
-  const[profile,setProfile]=useState(null);
-  const[view,setView]=useState({page:"home"});
+// ─── COURSE EDITOR ────────────────────────────────────────────
+function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
+  const course = courses[ci];
+  if (!course) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Parcours introuvable</div></div>;
 
-  const[contentVer,setContentVer]=useState(0);
+  const ICONS = ["🏎️","⚔️","🔧","🏁","🎯","⚡","🛞","🌧️","🏆","📚","💡","🎮"];
+  const COLORS = ["#22c55e","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899","#06b6d4","#f97316"];
 
-  useEffect(()=>{
-    sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null)});
-    const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setUser(session?.user||null)});
-    return()=>subscription.unsubscribe();
-  },[]);
-
-  useEffect(()=>{if(!user)return;(async()=>{
-    // Load content from Supabase (courses, settings)
-    await refreshContent();
-    setContentVer(v=>v+1); // force re-render with new data
-    const saved=await sbLoadProg(user.id);if(saved)setProg(p=>({...defProg(),...saved}));
-    const prof=await sbGetProfile(user.id);if(prof)setProfile(prof);
-  })()},[user]);
-
-  // Auto-save progress
-  const saveRef=React.useRef(null);
-  useEffect(()=>{if(!user)return;clearTimeout(saveRef.current);saveRef.current=setTimeout(()=>{
-    sbSaveProg(user.id,prog);
-    const displayName=profile?.display_name||user.user_metadata?.display_name||user.email?.split("@")[0]||"Driver";
-    sbUpdateLB(user.id,displayName,prog);
-  },1000)},[prog]);
-
-  const upd=(cid,data)=>{setProg(p=>{const ex=p[cid]||{};const nb=data.quizScore!=null?Math.max(data.quizScore,ex.bestScore||0):ex.bestScore;return{...p,[cid]:{...ex,...data,bestScore:nb}}})};
-  const stats=()=>{const a=COURSES.flatMap(c=>c.levels.flatMap(l=>l.chapters));const d=a.filter(ch=>prog[ch.id]?.completed).length;const t=a.length;const av=a.reduce((s,ch)=>s+(prog[ch.id]?.bestScore||0),0)/Math.max(d,1);return{completed:d,total:t,avgScore:av,percent:Math.round((d/t)*100)}};
-  const nav=(page,data={})=>{setView({page,...data});window.scrollTo(0,0)};
-  const displayName=profile?.display_name||user?.user_metadata?.display_name||user?.email?.split("@")[0]||"Driver";
-
-  if(user===undefined)return<div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🏁</div><div style={{color:"#e2e2e2",fontSize:18,letterSpacing:4}}>LOADING...</div></div></div>;
-  if(!user)return<AuthScreen/>;
-
-  const ap=view.page==="course"||view.page==="lesson"?"home":view.page==="quizplay"?"quiz":view.page;
-  return(<div style={S.app}>
-    <div style={S.scan}/>
-    <div className="app-shell">
-    <div className="penter" key={view.page+(view.chapterId||"")}>
-      {view.page==="home"&&<Home prog={prog} st={stats()} nav={nav} name={displayName}/>}
-      {view.page==="course"&&<Course cid={view.courseId} prog={prog} nav={nav}/>}
-      {view.page==="lesson"&&<Lesson cid={view.courseId} chid={view.chapterId} prog={prog} upd={upd} nav={nav}/>}
-      {view.page==="quiz"&&<QuizHub prog={prog} upd={upd} nav={nav}/>}
-      {view.page==="quizplay"&&<QuizPlay courseId={view.courseId} chid={view.chapterId} prog={prog} upd={upd} nav={nav}/>}
-      {view.page==="play"&&<PlayScreen uid={user.id} name={displayName}/>}
-      {view.page==="coaching"&&<Coaching/>}
-      {view.page==="profile"&&<Profile prog={prog} st={stats()} nav={nav} user={user} name={displayName} profile={profile} uid={user.id} onReset={()=>setProg(defProg())} onLogout={()=>sb.auth.signOut()}/>}
-    </div>
-    </div>
-    <div className="bnav">
-      <button className={ap==="home"?"on":""} onClick={()=>nav("home")}><NvH c={ap==="home"?"#e11d48":"#666"}/><span>HOME</span></button>
-      <button className={ap==="quiz"?"on":""} onClick={()=>nav("quiz")}><NvQ c={ap==="quiz"?"#e11d48":"#666"}/><span>QUIZ</span></button>
-      <button className={view.page==="play"?"on":""} onClick={()=>nav("play")}><NvPl c={view.page==="play"?"#e11d48":"#666"}/><span>PLAY</span></button>
-      <button className={view.page==="coaching"?"on":""} onClick={()=>nav("coaching")}><NvC c={view.page==="coaching"?"#e11d48":"#666"}/><span>COACH</span></button>
-      <button className={view.page==="profile"?"on":""} onClick={()=>nav("profile")}><NvP c={view.page==="profile"?"#e11d48":"#666"}/><span>PROFILE</span></button>
-    </div>
-  </div>);
-}
-
-// ━━━ HOME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function Home({prog,st,nav,name}){
-  const coursesBlock=(<div key="courses">
-    <div style={S.secT}><div style={S.rB}/>TRAINING COURSES</div>
-    <div className="courses-grid">
-    {COURSES.map(c=>{const a=c.levels.flatMap(l=>l.chapters);const d=a.filter(ch=>prog[ch.id]?.completed).length;const p=Math.round((d/a.length)*100);
-      return(<button key={c.id} style={S.cCard} onClick={()=>nav("course",{courseId:c.id})} onMouseEnter={e=>{e.currentTarget.style.borderColor="#e11d48";e.currentTarget.style.transform="translateY(-2px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#2a2a2a";e.currentTarget.style.transform="translateY(0)"}}>
-        <div style={S.cTop}><div style={S.cIcon}>{c.icon}</div><div style={{flex:1}}><div style={S.cTi}>{c.title}</div><div style={S.cDe}>{c.desc}</div></div><div style={S.cAr}>›</div></div>
-        <div style={S.cMeta}><span style={S.cCnt}>{a.length} chapters</span><div style={S.mBO}><div style={{...S.mBI,width:p+"%"}}/></div><span style={S.cPct}>{p}%</span></div>
-      </button>)})}
-    </div>
-  </div>);
-  const nextBlock=<NxL key="nextLesson" prog={prog} nav={nav}/>;
-  const blocks={nextLesson:nextBlock,courses:coursesBlock};
-
-  return(<div className="scr">
-    <div style={S.hdr}><div><div style={S.logoR}><span style={{fontSize:28}}>🏁</span><span style={S.logoT}>ACC</span><span style={S.logoS}>COACHING</span></div><div style={S.tag}>Console Edition</div></div><div style={{fontSize:12,color:"#666",textAlign:"right"}}>{name}</div></div>
-    <div style={S.pCard}><div style={S.pH}><span style={S.pL}>OVERALL PROGRESS</span><span style={S.pP}>{st.percent}%</span></div>
-      <div style={S.pBO}><div style={{...S.pBI,width:st.percent+"%"}}><div style={S.pG}/></div></div>
-      <div style={S.pSt}><div style={S.sI}><span style={S.sN}>{st.completed}</span><span style={S.sL}>Done</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.total-st.completed}</span><span style={S.sL}>Left</span></div><div style={S.sD}/><div style={S.sI}><span style={S.sN}>{st.completed>0?Math.round(st.avgScore):"—"}</span><span style={S.sL}>Avg</span></div></div></div>
-    {HOME_LAYOUT.map(k=>blocks[k]||null)}
-  </div>);
-}
-function NxL({prog,nav}){
-  let n=null;for(const c of COURSES){for(const l of c.levels){for(const ch of l.chapters){if(!prog[ch.id]?.completed){n={c,l,ch};break}}if(n)break}if(n)break}
-  if(!n)return<div style={{...S.nxC,borderColor:"#22c55e"}}><div style={{display:"flex",alignItems:"center",gap:12}}><TrI/><div><div style={{...S.nxT,color:"#22c55e"}}>Training Complete!</div><div style={S.nxS}>You've completed all chapters!</div></div></div></div>;
-  return(<button style={S.nxC} onClick={()=>nav("lesson",{courseId:n.c.id,chapterId:n.ch.id})} onMouseEnter={e=>{e.currentTarget.style.borderColor="#e11d48"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#dc262630"}}>
-    <div style={S.nxL}>NEXT LESSON</div><div style={S.nxT}>{n.ch.title}</div><div style={S.nxS}>{n.c.title} · <span style={{color:n.l.color}}>{n.l.level}</span></div><div style={S.nxB}><PlI/> Start</div>
-  </button>);
-}
-
-// ━━━ COURSE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function Course({cid,prog,nav}){
-  const c=COURSES.find(x=>x.id===cid);
-  return(<div className="scr"><button style={S.bkB} onClick={()=>nav("home")}><BkI/><span>Home</span></button>
-    <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:8}}><span style={{fontSize:36}}>{c.icon}</span><div><div style={S.pgT}>{c.title}</div><div style={S.pgS}>{c.desc}</div></div></div>
-    {c.levels.map((lv,li)=>{const d=lv.chapters.filter(ch=>prog[ch.id]?.completed).length;
-      return(<div key={li} style={{marginTop:28}}>
-        <div style={S.lvH}><div style={{...S.lvB,background:lv.color+"22",color:lv.color,borderColor:lv.color+"44"}}>{lv.level}</div><span style={S.lvC}>{d}/{lv.chapters.length}</span>{d===lv.chapters.length&&<span style={{color:"#22c55e",marginLeft:4}}><CkI/></span>}</div>
-        {lv.chapters.map((ch,ci)=>{const done=prog[ch.id]?.completed,sc=prog[ch.id]?.bestScore;
-          return(<button key={ch.id} style={{...S.chC,borderLeftColor:done?"#22c55e":lv.color}} onClick={()=>nav("lesson",{courseId:cid,chapterId:ch.id})} onMouseEnter={e=>{e.currentTarget.style.background="#1a1a1a"}} onMouseLeave={e=>{e.currentTarget.style.background="#111"}}>
-            <div style={S.chL}><div style={{...S.chN,background:done?"#22c55e":lv.color,color:"#000"}}>{done?<CkI/>:ci+1}</div><div><div style={S.chT}>{ch.title}</div><div style={S.chD}>{ch.desc}</div></div></div>
-            <div>{done&&sc!=null&&<div style={S.scB}>{Math.round(sc)}%</div>}</div>
-          </button>)})}
-      </div>)})}
-  </div>);
-}
-
-// ━━━ LESSON (content only, no quiz) ━━━━━━━━━━━━━━━━━━━━━━━━━
-function Lesson({cid,chid,prog,upd,nav}){
-  const c=COURSES.find(x=>x.id===cid);const lv=c.levels.find(l=>l.chapters.some(ch=>ch.id===chid));const ch=lv.chapters.find(x=>x.id===chid);
-  return(<div className="scr"><button style={S.bkB} onClick={()=>nav("course",{courseId:cid})}><BkI/><span>{c.title}</span></button>
-    <div style={{marginBottom:16}}><div style={{...S.lvB,display:"inline-flex",background:lv.color+"22",color:lv.color,borderColor:lv.color+"44",marginBottom:8}}>{lv.level}</div><div style={S.pgT}>{ch.title}</div><div style={S.pgS}>{ch.desc}</div></div>
-    <div className="lesson-body">
-      {ch.videoUrl&&<div style={{marginBottom:24}}><div style={{borderRadius:10,overflow:"hidden",border:"1px solid #222"}}><iframe src={ch.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>{ch.videoSource&&<div className="vid-source">Source: {ch.videoSource}</div>}</div>}
-      {ch.content.map((b,i)=>renderBlock(b,i))}
-    </div>
-  </div>);
-}
-
-// ━━━ QUIZ HUB (all quizzes by course) ━━━━━━━━━━━━━━━━━━━━━━━
-function QuizHub({prog,upd,nav}){
-  return(<div className="scr">
-    <div style={{textAlign:"center",padding:"12px 0 20px"}}><div style={{fontSize:40,marginBottom:8}}>✅</div><div style={S.pgT}>Quizzes</div><div style={{fontSize:14,color:"#888",marginTop:2}}>Test your knowledge — 70% to validate a chapter</div></div>
-    {COURSES.map(c=>(
-      <div key={c.id} style={{marginBottom:28}}>
-        <div style={S.secT}><div style={S.rB}/>{c.icon} {c.title}</div>
-        <div className="chapter-list">
-        {c.levels.flatMap(l=>l.chapters).map((ch,ci)=>{
-          const done=prog[ch.id]?.completed;const sc=prog[ch.id]?.bestScore;
-          return(<button key={ch.id} style={{...S.chC,borderLeftColor:done?"#22c55e":"#444"}} onClick={()=>nav("quizplay",{courseId:c.id,chapterId:ch.id})}
-            onMouseEnter={e=>{e.currentTarget.style.background="#1a1a1a"}} onMouseLeave={e=>{e.currentTarget.style.background="#111"}}>
-            <div style={S.chL}><div style={{...S.chN,background:done?"#22c55e":"#333",color:done?"#000":"#999"}}>{done?<CkI/>:"?"}</div><div><div style={S.chT}>{ch.title}</div><div style={S.chD}>{ch.quiz.length} questions</div></div></div>
-            <div>{done&&sc!=null&&<div style={S.scB}>{Math.round(sc)}%</div>}</div>
-          </button>);
-        })}
+  return (
+    <div>
+      <div className="card">
+        <div className="card-header"><div className="card-title">Informations du parcours</div></div>
+        <div className="card-body">
+          <div className="form-group">
+            <label className="form-label">Icône</label>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {ICONS.map(ic => (
+                <button key={ic} style={{fontSize:24,width:40,height:40,borderRadius:8,border:course.icon===ic?"2px solid var(--accent)":"1px solid var(--border)",background:course.icon===ic?"var(--accent)15":"var(--bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
+                  onClick={()=>updateCourses(d=>{d[ci].icon=ic})}>{ic}</button>
+              ))}
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Titre du parcours</label>
+            <input className="form-input" value={course.title} onChange={e=>updateCourses(d=>{d[ci].title=e.target.value})} placeholder="Ex: Pilotage Pur"/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <input className="form-input" value={course.desc} onChange={e=>updateCourses(d=>{d[ci].desc=e.target.value})} placeholder="Description courte du parcours"/>
+          </div>
         </div>
       </div>
-    ))}
+
+      <div className="card" style={{marginTop:16}}>
+        <div className="card-header">
+          <div className="card-title">📊 Niveaux ({course.levels.length})</div>
+          <button className="btn btn-sm btn-primary" onClick={()=>updateCourses(d=>{d[ci].levels.push({level:"Nouveau niveau",color:"#3b82f6",chapters:[]})})}>+ Ajouter niveau</button>
+        </div>
+        <div className="card-body">
+          {course.levels.map((level, li) => (
+            <div key={li} className="list-item" style={{borderLeft:`3px solid ${level.color}`}}>
+              <div className="item-info">
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input className="form-input" style={{padding:"4px 8px",width:180,fontSize:13}} value={level.level} onChange={e=>updateCourses(d=>{d[ci].levels[li].level=e.target.value})}/>
+                  <div style={{display:"flex",gap:3}}>
+                    {COLORS.map(col => (
+                      <button key={col} style={{width:18,height:18,borderRadius:"50%",background:col,border:level.color===col?"2px solid #fff":"1px solid #333",cursor:"pointer"}}
+                        onClick={()=>updateCourses(d=>{d[ci].levels[li].color=col})}/>
+                    ))}
+                  </div>
+                </div>
+                <div className="item-sub">{level.chapters.length} chapitres</div>
+              </div>
+              <div className="item-actions">
+                {li > 0 && <button className="btn-icon" title="Monter" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li-1];d[ci].levels[li-1]=t})}>↑</button>}
+                {li < course.levels.length-1 && <button className="btn-icon" title="Descendre" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li+1];d[ci].levels[li+1]=t})}>↓</button>}
+                <button className="btn-icon" title="Supprimer" onClick={()=>{if(confirm("Supprimer ce niveau et tous ses chapitres ?"))updateCourses(d=>{d[ci].levels.splice(li,1)})}}>🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{marginTop:20}}>
+        <button className="btn btn-danger" onClick={()=>{if(confirm("Supprimer le parcours \""+course.title+"\" ?")) { updateCourses(d=>d.splice(ci,1)); nav({type:"dashboard"}); }}}>🗑️ Supprimer ce parcours</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── CHAPTER EDITOR ───────────────────────────────────────────
+function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
+  const [tab, setTab] = useState("info");
+  const chapter = courses[ci]?.levels[li]?.chapters[chi];
+  if (!chapter) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Chapitre introuvable</div></div>;
+
+  const update = (fn) => updateCourses(d => fn(d[ci].levels[li].chapters[chi]));
+
+  return (
+    <div>
+      <div className="status-bar">
+        ✓ Chapitre : {chapter.content.filter(b => typeof b === "string" || (typeof b === "object" && b.type !== "image")).length} textes · {chapter.content.filter(b => typeof b === "object" && b.type === "image").length} images · {chapter.quiz.length} questions quiz · Vidéo : {chapter.videoUrl ? "✓" : "✗"}
+      </div>
+
+      <div className="tabs">
+        <button className={`tab ${tab==="info"?"active":""}`} onClick={()=>setTab("info")}>ℹ️ Infos</button>
+        <button className={`tab ${tab==="content"?"active":""}`} onClick={()=>setTab("content")}>📖 Contenu</button>
+        <button className={`tab ${tab==="video"?"active":""}`} onClick={()=>setTab("video")}>🎬 Vidéo</button>
+        <button className={`tab ${tab==="quiz"?"active":""}`} onClick={()=>setTab("quiz")}>✅ Quiz ({chapter.quiz.length})</button>
+        <button className={`tab ${tab==="danger"?"active":""}`} onClick={()=>setTab("danger")}>⚠️</button>
+      </div>
+
+      {/* INFO TAB */}
+      {tab === "info" && (
+        <div className="card">
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">Titre du chapitre</label>
+              <input className="form-input" value={chapter.title} onChange={e=>update(ch=>{ch.title=e.target.value})} placeholder="Ex: Les bases du freinage"/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description courte</label>
+              <input className="form-input" value={chapter.desc} onChange={e=>update(ch=>{ch.desc=e.target.value})} placeholder="Ex: Apprends à freiner efficacement"/>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Identifiant unique</label>
+              <input className="form-input" value={chapter.id} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text3)"}} readOnly/>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTENT TAB */}
+      {tab === "content" && (
+        <div>
+          <div className="para-hint">💡 **texte** = gras rouge. Types : Texte (3 tailles), Titre, Encadré, Image. Réordonne librement.</div>
+          {chapter.content.map((block, pi) => {
+            const bType = typeof block === "object" ? (block.type || "text") : "text";
+            const isImage = bType === "image";
+            const isHeading = bType === "heading";
+            const isCallout = bType === "callout";
+            const isText = !isImage && !isHeading && !isCallout;
+            const textVal = typeof block === "string" ? block : (block.value || "");
+            const size = typeof block === "object" ? (block.size || "normal") : "normal";
+            const typeLabels = {text:"📝 Texte",heading:"🔤 Titre",callout:"💡 Encadré",image:"🖼️ Image"};
+            const typeColors = {text:"var(--text3)",heading:"var(--accent)",callout:"var(--yellow)",image:"var(--blue)"};
+            return (
+            <div key={pi} className="para-block">
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"var(--text3)",fontFamily:"'JetBrains Mono',monospace"}}>{pi+1}</span>
+                <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:typeColors[bType]+"22",color:typeColors[bType]}}>{typeLabels[bType]||bType}</span>
+                {isText && <select style={{fontSize:10,padding:"2px 6px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,color:"var(--text2)"}} value={size} onChange={e=>update(ch=>{ch.content[pi]=typeof ch.content[pi]==="string"?{type:"text",value:ch.content[pi],size:e.target.value}:{...ch.content[pi],size:e.target.value}})}>
+                  <option value="small">Petit</option><option value="normal">Normal</option><option value="large">Grand</option>
+                </select>}
+                <div style={{flex:1}}/>
+                {pi > 0 && <button className="btn-icon btn-sm" title="Monter" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi-1];ch.content[pi-1]=t})}>↑</button>}
+                {pi < chapter.content.length-1 && <button className="btn-icon btn-sm" title="Descendre" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi+1];ch.content[pi+1]=t})}>↓</button>}
+                <button className="btn-icon btn-sm" style={{color:"var(--red)"}} title="Supprimer" onClick={()=>update(ch=>{ch.content.splice(pi,1)})}>✗</button>
+              </div>
+              {isImage ? (
+                <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12}}>
+                  <div className="form-group" style={{marginBottom:8}}>
+                    <label className="form-label">URL de l'image</label>
+                    <input className="form-input" value={block.url||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],url:e.target.value}})} placeholder="https://example.com/image.jpg"/>
+                  </div>
+                  <div className="form-group" style={{marginBottom:0}}>
+                    <label className="form-label">Légende (optionnel)</label>
+                    <input className="form-input" value={block.caption||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],caption:e.target.value}})} placeholder="Description de l'image..."/>
+                  </div>
+                  {block.url && <div style={{marginTop:8,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={block.url} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}} alt={block.caption||""}/></div>}
+                </div>
+              ) : isHeading ? (
+                <input className="form-input" style={{fontSize:18,fontWeight:700}} value={textVal} onChange={e=>update(ch=>{ch.content[pi]={type:"heading",value:e.target.value}})} placeholder="Titre de section..."/>
+              ) : (
+                <textarea className="form-input" style={{fontSize:isCallout?13:size==="large"?16:size==="small"?12:14}} value={textVal} rows={3} onChange={e=>update(ch=>{
+                  if(typeof ch.content[pi]==="string"){ch.content[pi]=isCallout?{type:"callout",value:e.target.value}:e.target.value}
+                  else{ch.content[pi]={...ch.content[pi],value:e.target.value}}
+                })} placeholder={isCallout?"Texte de l'encadré...":"Contenu du paragraphe..."}/>
+              )}
+            </div>
+          )})}
+          <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
+            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>📝 Texte</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--accent)30",color:"var(--accent)"}} onClick={()=>update(ch=>{ch.content.push({type:"heading",value:""})})}>🔤 Titre</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--yellow)30",color:"var(--yellow)"}} onClick={()=>update(ch=>{ch.content.push({type:"callout",value:""})})}>💡 Encadré</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--blue)30",color:"var(--blue)"}} onClick={()=>update(ch=>{ch.content.push({type:"image",url:"",caption:""})})}>🖼️ Image</button>
+          </div>
+        </div>
+      )}
+
+      {/* VIDEO TAB */}
+      {tab === "video" && (
+        <div className="card">
+          <div className="card-body">
+            <div className="form-group">
+              <label className="form-label">URL de la vidéo YouTube (embed)</label>
+              <input className="form-input" value={chapter.videoUrl} onChange={e=>update(ch=>{ch.videoUrl=e.target.value})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
+              <div className="para-hint" style={{marginTop:8}}>
+                Pour obtenir le lien embed : va sur YouTube → Partager → Intégrer → copie le lien src="https://www.youtube.com/embed/..."
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Source / Crédit vidéo (optionnel)</label>
+              <input className="form-input" value={chapter.videoSource||""} onChange={e=>update(ch=>{ch.videoSource=e.target.value||undefined})} placeholder="Ex: Aris.Drives YouTube Channel"/>
+              <div className="para-hint" style={{marginTop:4}}>Affiché en petit sous la vidéo dans l'app</div>
+            </div>
+            {chapter.videoUrl && (
+              <div style={{marginTop:12}}>
+                <label className="form-label">Aperçu</label>
+                <div style={{borderRadius:8,overflow:"hidden",border:"1px solid var(--border)"}}>
+                  <iframe src={chapter.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* QUIZ TAB */}
+      {tab === "quiz" && (
+        <div>
+          {chapter.quiz.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-icon">✅</div>
+              <div className="empty-text">Aucune question</div>
+              <div className="empty-sub">Ajoute des questions pour valider ce chapitre</div>
+            </div>
+          )}
+          {chapter.quiz.map((q, qi) => (
+            <div key={qi} className="card" style={{marginBottom:12}}>
+              <div className="card-header">
+                <div className="card-title">
+                  <span style={{color:"var(--accent)",fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>Q{qi+1}</span>
+                  Question {qi+1}
+                </div>
+                <div style={{display:"flex",gap:4}}>
+                  {qi > 0 && <button className="btn-icon btn-sm" onClick={()=>update(ch=>{const t=ch.quiz[qi];ch.quiz[qi]=ch.quiz[qi-1];ch.quiz[qi-1]=t})}>↑</button>}
+                  {qi < chapter.quiz.length-1 && <button className="btn-icon btn-sm" onClick={()=>update(ch=>{const t=ch.quiz[qi];ch.quiz[qi]=ch.quiz[qi+1];ch.quiz[qi+1]=t})}>↓</button>}
+                  <button className="btn-icon btn-sm" style={{color:"var(--red)"}} onClick={()=>update(ch=>{ch.quiz.splice(qi,1)})}>🗑️</button>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="form-group">
+                  <label className="form-label">Question</label>
+                  <input className="form-input" value={q.question} onChange={e=>update(ch=>{ch.quiz[qi].question=e.target.value})} placeholder="Pose ta question ici..."/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">🖼️ Image de la question (optionnel)</label>
+                  <input className="form-input" value={q.image||""} onChange={e=>update(ch=>{ch.quiz[qi].image=e.target.value||undefined})} placeholder="https://example.com/image.jpg"/>
+                  {q.image && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={q.image} style={{width:"100%",maxHeight:150,objectFit:"cover",display:"block"}} alt=""/></div>}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">🎬 Vidéo de la question (optionnel)</label>
+                  <input className="form-input" value={q.video||""} onChange={e=>update(ch=>{ch.quiz[qi].video=e.target.value||undefined})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
+                  <div className="para-hint" style={{marginTop:4}}>Lien embed YouTube uniquement. Ex: https://www.youtube.com/embed/abc123</div>
+                  {q.video && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><iframe src={q.video} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>}
+                </div>
+                <label className="form-label">Options (clique le cercle vert pour marquer la bonne réponse)</label>
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="quiz-option-row">
+                    <span style={{fontSize:11,color:"var(--text3)",width:16,textAlign:"center",fontWeight:600}}>{String.fromCharCode(65+oi)}</span>
+                    <input className="form-input" style={{marginBottom:0}} value={opt} onChange={e=>update(ch=>{ch.quiz[qi].options[oi]=e.target.value})} placeholder={`Option ${String.fromCharCode(65+oi)}`}/>
+                    <button className={`quiz-option-correct ${q.correct===oi?"is-correct":""}`} onClick={()=>update(ch=>{ch.quiz[qi].correct=oi})} title="Bonne réponse">✓</button>
+                    {q.options.length > 2 && <button className="btn-icon btn-sm" style={{color:"var(--red)"}} onClick={()=>update(ch=>{ch.quiz[qi].options.splice(oi,1);if(ch.quiz[qi].correct>=oi&&ch.quiz[qi].correct>0)ch.quiz[qi].correct--})}>✗</button>}
+                  </div>
+                ))}
+                {q.options.length < 6 && (
+                  <button className="btn btn-ghost btn-sm" style={{marginTop:4}} onClick={()=>update(ch=>{ch.quiz[qi].options.push("")})}>+ Ajouter option</button>
+                )}
+              </div>
+            </div>
+          ))}
+          <button className="btn btn-primary" style={{marginTop:8}} onClick={()=>update(ch=>{ch.quiz.push({question:"",options:["","","",""],correct:0})})}>+ Ajouter une question</button>
+        </div>
+      )}
+
+      {/* DANGER TAB */}
+      {tab === "danger" && (
+        <div className="card">
+          <div className="card-header"><div className="card-title" style={{color:"var(--red)"}}>⚠️ Zone de danger</div></div>
+          <div className="card-body">
+            <p style={{fontSize:13,color:"var(--text2)",marginBottom:16}}>Ces actions sont irréversibles. Fais attention !</p>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button className="btn btn-danger" onClick={() => {
+                if (confirm("Supprimer le chapitre \""+chapter.title+"\" ?\nCette action est irréversible.")) {
+                  updateCourses(d => { d[ci].levels[li].chapters.splice(chi, 1); });
+                  showToast("Chapitre supprimé");
+                }
+              }}>🗑️ Supprimer ce chapitre</button>
+              <button className="btn btn-secondary" onClick={() => {
+                updateCourses(d => {
+                  const copy = JSON.parse(JSON.stringify(chapter));
+                  copy.id = uid();
+                  copy.title = copy.title + " (copie)";
+                  d[ci].levels[li].chapters.splice(chi+1, 0, copy);
+                });
+                showToast("Chapitre dupliqué !");
+              }}>📋 Dupliquer ce chapitre</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── USERS VIEW ───────────────────────────────────────────────
+function UsersView({ showToast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await sb.from("profiles").select("id, display_name, email, premium, created_at, last_active");
+      if (data) setUsers(data.sort((a, b) => new Date(b.last_active || 0) - new Date(a.last_active || 0)));
+      setLoading(false);
+    })();
+  }, []);
+
+  const togglePremium = async (uid, current) => {
+    await sb.from("profiles").update({ premium: !current }).eq("id", uid);
+    setUsers(prev => prev.map(u => u.id === uid ? { ...u, premium: !current } : u));
+    showToast(!current ? "Premium activé !" : "Premium retiré");
+  };
+
+  if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Chargement des utilisateurs...</div>;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{users.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{users.filter(u=>u.premium).length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
+      </div>
+
+      <div className="card">
+        <div className="card-header"><div className="card-title">👥 Tous les utilisateurs</div></div>
+        <div className="card-body">
+          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> :
+          users.map(u => (
+            <div key={u.id} className="list-item">
+              <div style={{width:36,height:36,borderRadius:"50%",background:u.premium?"var(--yellow)22":"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{u.premium?"👑":"👤"}</div>
+              <div className="item-info">
+                <div className="item-title">{u.display_name || "Sans nom"}</div>
+                <div className="item-sub">{u.email} · Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</div>
+              </div>
+              <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>
+                {u.premium ? "Retirer Premium" : "👑 Premium"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── COACHING EDITOR ──────────────────────────────────────────
+function CoachingEditor({ showToast }) {
+  const loadS=()=>{try{const s=localStorage.getItem("acc-coaching-settings");return s?JSON.parse(s):{}}catch{return{}}};
+  const [settings, setSettings] = useState(loadS);
+  const c = settings.coaching || {title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
+  const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
+  const saveCoaching=async()=>{
+    await sb.auth.refreshSession();
+    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+    const ok=await sbSaveContent("settings",s);
+    showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnectez-vous",ok?"success":"error");
+  };
+
+  return(<div>
+    <div className="card"><div className="card-header"><div className="card-title">📝 Textes de la page</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">Titre principal</label><input className="form-input" value={c.title} onChange={e=>upd(d=>{d.title=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Sous-titre</label><input className="form-input" value={c.subtitle} onChange={e=>upd(d=>{d.subtitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Titre session</label><input className="form-input" value={c.sessionTitle} onChange={e=>upd(d=>{d.sessionTitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Sous-titre session</label><input className="form-input" value={c.sessionSub} onChange={e=>upd(d=>{d.sessionSub=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Description</label><textarea className="form-input" rows={3} value={c.sessionDesc} onChange={e=>upd(d=>{d.sessionDesc=e.target.value})}/></div>
+    </div></div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">✨ Avantages listés</div><button className="btn btn-sm btn-primary" onClick={()=>upd(d=>{d.features=[...d.features,"Nouvel avantage"]})}>+ Ajouter</button></div><div className="card-body">
+      {(c.features||[]).map((f,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:6}}>
+        <input className="form-input" style={{marginBottom:0}} value={f} onChange={e=>upd(d=>{d.features[i]=e.target.value})}/>
+        {i>0&&<button className="btn-icon" onClick={()=>upd(d=>{const t=d.features[i];d.features[i]=d.features[i-1];d.features[i-1]=t})}>↑</button>}
+        <button className="btn-icon" style={{color:"var(--red)"}} onClick={()=>upd(d=>{d.features.splice(i,1)})}>✗</button>
+      </div>)}
+    </div></div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">🔗 Bouton de réservation</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">URL de réservation</label><input className="form-input" value={c.bookUrl||""} onChange={e=>upd(d=>{d.bookUrl=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Texte du bouton</label><input className="form-input" value={c.bookLabel||""} onChange={e=>upd(d=>{d.bookLabel=e.target.value})}/></div>
+    </div></div>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveCoaching}>💾 Sauvegarder et synchroniser</button>
   </div>);
 }
 
-// ━━━ QUIZ PLAY (single quiz) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function QuizPlay({courseId,chid,prog,upd,nav}){
-  const c=COURSES.find(x=>x.id===courseId);const lv=c.levels.find(l=>l.chapters.some(ch=>ch.id===chid));const ch=lv.chapters.find(x=>x.id===chid);
-  const[ans,setAns]=useState({});const[done,setDone]=useState(false);const[sc,setSc]=useState(0);
-  const submit=()=>{const cr=ch.quiz.reduce((a,q,i)=>a+(ans[i]===q.correct?1:0),0);const p=(cr/ch.quiz.length)*100;setSc(p);setDone(true);upd(chid,{completed:p>=70||prog[chid]?.completed,quizScore:p})};
-  const retry=()=>{setAns({});setDone(false);setSc(0)};
-
-  if(done)return(<div className="scr"><button style={S.bkB} onClick={()=>nav("quiz")}><BkI/><span>All Quizzes</span></button>
-    <div style={{textAlign:"center",paddingBottom:20}}>
-      <div style={{...S.rCir,borderColor:sc>=70?"#22c55e":"#ef4444"}}><div style={{fontSize:42,fontWeight:800}}>{Math.round(sc)}%</div><div style={{fontSize:14,color:"#999",marginTop:-4}}>{Math.round(sc*ch.quiz.length/100)}/{ch.quiz.length} correct</div></div>
-      <div style={{...S.rMsg,color:sc>=70?"#22c55e":"#ef4444"}}>{sc>=70?"🏆 Chapter Validated!":"❌ Not Validated"}</div>
-      <div style={S.rSub}>{sc>=70?"Great work!":"You need 70%. Review and try again!"}</div>
-      <div style={{marginTop:24}}>{ch.quiz.map((q,qi)=>{const ok=ans[qi]===q.correct;return<div key={qi} style={{...S.rvC,borderLeftColor:ok?"#22c55e":"#ef4444"}}><div style={{fontSize:14,fontWeight:600,color:"#e2e2e2"}}>{q.question}</div><div style={{color:ok?"#22c55e":"#ef4444",fontSize:14,marginTop:4}}>{ok?"✓ ":"✗ "}{q.options[ans[qi]]}</div>{!ok&&<div style={{color:"#22c55e",fontSize:14,marginTop:2}}>→ {q.options[q.correct]}</div>}</div>})}</div>
-      <div style={{display:"flex",gap:12,marginTop:20,justifyContent:"center",flexWrap:"wrap"}}>
-        {sc<70&&<button style={S.sec} onClick={retry}>Retry Quiz</button>}
-        <button style={S.sec} onClick={()=>nav("quiz")}>All Quizzes</button>
-      </div>
-    </div>
-  </div>);
-
-  return(<div className="scr"><button style={S.bkB} onClick={()=>nav("quiz")}><BkI/><span>All Quizzes</span></button>
-    <div style={{marginBottom:16}}><div style={{...S.lvB,display:"inline-flex",background:lv.color+"22",color:lv.color,borderColor:lv.color+"44",marginBottom:8}}>{lv.level}</div><div style={S.pgT}>{ch.title}</div><div style={{fontSize:14,color:"#888"}}>{ch.quiz.length} questions · 70% to pass</div></div>
-    <div className="lesson-body">
-    {ch.quiz.map((q,qi)=><div key={qi} style={S.qC}><div style={S.qN}>Question {qi+1}/{ch.quiz.length}</div>
-      {q.video&&<div style={{borderRadius:8,overflow:"hidden",marginBottom:12,border:"1px solid #222"}}><iframe src={q.video} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>}
-      {q.image&&<img className="quiz-img" src={q.image} alt=""/>}
-      <div style={S.qT}>{q.question}</div>
-      <div>{q.options.map((o,oi)=><button key={oi} style={{...S.oB,...(ans[qi]===oi?S.oS:{})}} onClick={()=>setAns(p=>({...p,[qi]:oi}))}><span style={{...S.oL,...(ans[qi]===oi?S.oLS:{})}}>{String.fromCharCode(65+oi)}</span>{o}</button>)}</div>
-    </div>)}
-    <button style={{...S.pri,opacity:Object.keys(ans).length===ch.quiz.length?1:.4}} disabled={Object.keys(ans).length!==ch.quiz.length} onClick={submit}>Submit Answers</button>
-    </div>
-  </div>);
-}
-
-// ━━━ PUSH NOTIFICATIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const requestPushPermission=async()=>{
-  if(!("Notification" in window))return;
-  if(Notification.permission==="default"){await Notification.requestPermission()}
-};
-const sendPushNotif=(title,body,icon="🏁")=>{
-  if(!("Notification" in window)||Notification.permission!=="granted")return;
-  try{new Notification(title,{body,icon:"/favicon.ico",badge:"/favicon.ico",tag:"acc-match"})}catch(e){console.log("Notif failed",e)}
-};
-
-// ━━━ PLAY (matchmaking) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function PlayScreen({uid,name}){
-  const[avail,setAvail]=useState(false);const[players,setPlayers]=useState([]);const[match,setMatch]=useState(null);const[loading,setLoading]=useState(true);
-  const prevMatch=React.useRef(null);
-
-  const refresh=async()=>{
-    const my=await sbGetMyMatch(uid);
-    if(my&&my.matched_with){
-      const partner=await sb.from("matchmaking").select("display_name").eq("id",my.matched_with).single();
-      const partnerName=partner?.data?.display_name||"Driver";
-      // Send push notif when match is NEW (someone matched with us)
-      if(!prevMatch.current&&my.matched_with){
-        sendPushNotif("🤝 Match Found!",`${partnerName} wants to drive with you! Join Server 1 XCL`);
-      }
-      prevMatch.current=my.matched_with;
-      setMatch({myName:name,partnerName,partnerId:my.matched_with});
-      setAvail(false);
-    }else{
-      prevMatch.current=null;
-      setAvail(my?.available||false);
-      if(my?.available){const p=await sbGetAvailable(uid);setPlayers(p)}
-      setMatch(null);
-    }
-    setLoading(false);
-  };
-  useEffect(()=>{requestPushPermission();refresh();const iv=setInterval(refresh,5000);return()=>clearInterval(iv)},[]);
-
-  const toggleAvail=async()=>{
-    if(avail){await sbSetAvailable(uid,name,false);setAvail(false);setPlayers([])}
-    else{await sbSetAvailable(uid,name,true);setAvail(true);const p=await sbGetAvailable(uid);setPlayers(p)}
+// ─── HOME LAYOUT EDITOR ──────────────────────────────────────
+function HomeLayoutEditor({ courses, updateCourses, showToast }) {
+  const loadS=()=>{try{const s=localStorage.getItem("acc-coaching-settings");return s?JSON.parse(s):{}}catch{return{}}};
+  const [settings, setSettings] = useState(loadS);
+  const layout = settings.homeLayout || ["nextLesson","courses"];
+  const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
+  const saveLayout=async()=>{
+    await sb.auth.refreshSession();
+    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+    const ok=await sbSaveContent("settings",s);
+    showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnectez-vous",ok?"success":"error");
   };
 
-  const doMatch=async(theirId,theirName)=>{
-    await sbMatchWith(uid,theirId);
-    sendPushNotif("🤝 You're Connected!",`You and ${theirName} are matched! Join Server 1 XCL`);
-    // Trigger email notification via Edge Function
-    try{await fetch(SUPABASE_URL+"/functions/v1/match-notify",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON},body:JSON.stringify({matcherId:uid,matcherName:name,matchedId:theirId,matchedName:theirName})})}catch(e){}
-    setMatch({myName:name,partnerName:theirName,partnerId:theirId});
-    setAvail(false);
-  };
+  const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
 
-  const leaveMatch=async()=>{
-    await sbClearMatch(uid);
-    if(match?.partnerId)await sbClearMatch(match.partnerId);
-    setMatch(null);
-  };
-
-  if(loading)return<div className="scr"><div style={{textAlign:"center",padding:60,color:"#666"}}>Loading...</div></div>;
-
-  // Matched state
-  if(match)return(<div className="scr">
-    <div style={{textAlign:"center",padding:"30px 0"}}>
-      <div style={{fontSize:60,marginBottom:16}}>🤝</div>
-      <div style={S.pgT}>You're Connected!</div>
-      <div style={{fontSize:16,color:"#888",marginTop:8,marginBottom:24}}>{match.myName} & {match.partnerName}</div>
-      <div style={{background:"linear-gradient(135deg,#111,#1a0a0a)",border:"1px solid #22c55e44",borderRadius:12,padding:24,maxWidth:400,margin:"0 auto"}}>
-        <div style={{fontSize:18,fontWeight:700,color:"#22c55e",marginBottom:8}}>🏁 Join Server 1 XCL</div>
-        <div style={{fontSize:15,color:"#ccc",lineHeight:1.7}}>Head to the XCL server and start driving together! Have a great session.</div>
-      </div>
-      <button style={{...S.sec,marginTop:24,borderColor:"#ef444444",color:"#ef4444"}} onClick={leaveMatch}>Leave Session</button>
-    </div>
-  </div>);
-
-  // Available / browsing state
-  return(<div className="scr">
-    <div style={{textAlign:"center",padding:"12px 0 20px"}}><div style={{fontSize:40,marginBottom:8}}>🎮</div><div style={S.pgT}>Find a Partner</div><div style={{fontSize:14,color:"#888",marginTop:2}}>Set yourself as available and find someone to drive with</div></div>
-    <div style={{textAlign:"center",marginBottom:28}}>
-      <button style={{...avail?{...S.sec,borderColor:"#22c55e",color:"#22c55e",background:"#22c55e15"}:S.pri,padding:"14px 32px",fontSize:16}} onClick={toggleAvail}>
-        {avail?"✓ You're Available — Click to Go Offline":"🟢 I'm Available to Drive"}
-      </button>
-    </div>
-    {avail&&<div>
-      <div style={S.secT}><div style={S.rB}/>AVAILABLE DRIVERS ({players.length})</div>
-      {players.length===0?<div style={{textAlign:"center",color:"#666",padding:30,fontSize:15}}>No other drivers available right now. Stay online — they'll see you!</div>:
-      players.map(p=>(
-        <button key={p.id} style={{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"16px 18px",background:"#111",border:"1px solid #222",borderRadius:10,marginBottom:8,cursor:"pointer",textAlign:"left",color:"#e2e2e2",fontFamily:"'Rajdhani',sans-serif",transition:"all .15s"}}
-          onClick={()=>doMatch(p.id,p.display_name)} onMouseEnter={e=>{e.currentTarget.style.borderColor="#e11d48"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#222"}}>
-          <div style={{width:40,height:40,borderRadius:"50%",background:"#22c55e22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🟢</div>
-          <div style={{flex:1}}><div style={{fontSize:16,fontWeight:700}}>{p.display_name}</div><div style={{fontSize:12,color:"#888"}}>Available now</div></div>
-          <div style={{fontSize:13,color:"#e11d48",fontWeight:700}}>CONNECT →</div>
-        </button>
+  return(<div>
+    <div className="card"><div className="card-header"><div className="card-title">🏠 Ordre des blocs sur l'accueil</div></div><div className="card-body">
+      <div className="para-hint">Déplace les blocs pour changer l'ordre. "Next Lesson" en haut = mise en avant.</div>
+      {layout.map((key,i)=>(
+        <div key={key} className="list-item">
+          <span className="drag-handle">☰</span>
+          <div className="item-info"><div className="item-title">{blockLabels[key]||key}</div></div>
+          <div className="item-actions">
+            {i>0&&<button className="btn-icon" onClick={()=>{const n=[...layout];const t=n[i];n[i]=n[i-1];n[i-1]=t;setLayout(n)}}>↑</button>}
+            {i<layout.length-1&&<button className="btn-icon" onClick={()=>{const n=[...layout];const t=n[i];n[i]=n[i+1];n[i+1]=t;setLayout(n)}}>↓</button>}
+          </div>
+        </div>
       ))}
-    </div>}
-    {!avail&&<div style={{textAlign:"center",color:"#555",padding:20,fontSize:14}}>Set yourself as available to see other drivers looking for a partner.</div>}
-  </div>);
-}
+    </div></div>
 
-// ━━━ COACHING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function Coaching(){
-  const d=COACH_DATA;const featureIcons=["🔍","🏎️","📋","🎮","🏁","⚡","🔧","🏆"];
-  return(<div className="scr">
-    <div style={{textAlign:"center",padding:"20px 0 10px"}}><div style={{fontSize:56,marginBottom:12}}>🎯</div><div style={S.pgT}>{d.title}</div><div style={{fontSize:13,color:"#888",marginTop:4,maxWidth:420,margin:"4px auto 0"}}>{d.subtitle}</div></div>
-    <div style={{background:"linear-gradient(135deg,#111,#1a0a0a)",border:"1px solid #2a1515",borderRadius:12,padding:24,marginTop:24}}>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}><div style={{width:48,height:48,borderRadius:12,background:"#e11d4818",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>⏱️</div><div><div style={{fontSize:18,fontWeight:700}}>{d.sessionTitle}</div><div style={{fontSize:12,color:"#888"}}>{d.sessionSub}</div></div></div>
-      <div style={{fontSize:13,color:"#ccc",lineHeight:1.7,marginBottom:20}}>{d.sessionDesc}</div>
-      <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
-        {(d.features||[]).map((f,j)=><div key={j} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#0a0a0a",borderRadius:8,border:"1px solid #1a1a1a"}}><span style={{fontSize:18}}>{featureIcons[j%featureIcons.length]}</span><span style={{fontSize:13,color:"#ccc"}}>{f}</span></div>)}
-      </div>
-      <a href={d.bookUrl||"#"} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",padding:"14px 24px",background:"linear-gradient(135deg,#e11d48,#be123c)",color:"#fff",border:"none",borderRadius:10,fontSize:16,fontWeight:700,letterSpacing:1,textDecoration:"none"}}>🎯 {d.bookLabel||"Book Your Session"}</a>
-      <div style={{textAlign:"center",marginTop:10,fontSize:11,color:"#666"}}>Redirects to our booking platform</div>
-    </div>
-  </div>);
-}
-
-// ━━━ PROFILE (includes leaderboard) ━━━━━━━━━━━━━━━━━━━━━━━━━
-function Profile({prog,st,nav,user,name,profile,uid,onReset,onLogout}){
-  const[cfm,setCfm]=useState(false);const[showLB,setShowLB]=useState(false);const[lbData,setLbData]=useState([]);
-  const loadLB=()=>{if(!showLB){setShowLB(true);sbGetLB().then(d=>setLbData(d))}else setShowLB(false)};
-  const rc=["#f59e0b","#94a3b8","#cd7f32"];
-  return(<div className="scr">
-    <div style={{textAlign:"center",marginBottom:32,paddingTop:8}}>
-      <div style={S.prAv}><span style={{fontSize:40}}>🏁</span></div>
-      <div style={S.pgT}>{name}</div>
-      <div style={{fontSize:12,color:"#666",marginTop:4}}>{user.email}</div>
-      <div style={{...S.lvB,display:"inline-flex",marginTop:8,background:st.percent>=80?"#ef444422":st.percent>=40?"#f59e0b22":"#22c55e22",color:st.percent>=80?"#ef4444":st.percent>=40?"#f59e0b":"#22c55e",borderColor:st.percent>=80?"#ef444444":st.percent>=40?"#f59e0b44":"#22c55e44"}}>{st.percent>=80?"Expert":st.percent>=40?"Intermediate":"Beginner"}</div>
-    </div>
-    <div className="stat-grid-4">
-      <div style={S.stB}><div style={S.stBN}>{st.completed}</div><div style={S.stBL}>Done</div></div>
-      <div style={S.stB}><div style={S.stBN}>{st.total}</div><div style={S.stBL}>Total</div></div>
-      <div style={S.stB}><div style={S.stBN}>{st.completed>0?Math.round(st.avgScore)+"%":"—"}</div><div style={S.stBL}>Avg Score</div></div>
-      <div style={S.stB}><div style={S.stBN}>{st.percent}%</div><div style={S.stBL}>Progress</div></div>
-    </div>
-    <div style={{...S.secT,marginTop:32}}><div style={S.rB}/>COURSE BREAKDOWN</div>
-    {COURSES.map(c=>{const ch=c.levels.flatMap(l=>l.chapters);const d=ch.filter(x=>prog[x.id]?.completed).length;
-      return<div key={c.id} style={S.prR}><span style={{fontSize:24}}>{c.icon}</span><div style={{flex:1}}><div style={{color:"#e2e2e2",fontSize:15,fontWeight:600}}>{c.title}</div><div style={{color:"#666",fontSize:13,marginTop:2}}>{d}/{ch.length}</div></div><div style={{...S.mBO,width:80}}><div style={{...S.mBI,width:Math.round((d/ch.length)*100)+"%"}}/></div></div>})}
-
-    <button style={{...S.sec,width:"100%",justifyContent:"center",marginTop:24}} onClick={loadLB}>🏆 {showLB?"Hide":"Show"} Leaderboard</button>
-    {showLB&&<div style={{marginTop:16}}>
-      {lbData.length===0?<div style={{textAlign:"center",color:"#666",padding:20}}>No rankings yet</div>:
-      <div className="lb-grid">{lbData.map((e,i)=>(
-        <div key={e.id} className={`lb-row ${e.id===uid?"me":""}`}>
-          <div className="lb-rank" style={{background:i<3?rc[i]+"22":"#1a1a1a",color:i<3?rc[i]:"#666"}}>{i<3?["🥇","🥈","🥉"][i]:i+1}</div>
-          <div style={{flex:1}}><div style={{fontSize:15,fontWeight:700,color:e.id===uid?"#e11d48":"#e2e2e2"}}>{e.display_name}{e.id===uid&&" (you)"}</div><div style={{fontSize:12,color:"#666"}}>{e.completed}/{e.total} · {e.avg_score}% avg</div></div>
-          <div style={{fontSize:20,fontWeight:800,color:"#e11d48"}}>{e.percent}%</div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Ordre des parcours</div></div><div className="card-body">
+      <div className="para-hint">Change l'ordre d'affichage des parcours dans l'app.</div>
+      {courses.map((c,ci)=>(
+        <div key={c.id} className="list-item">
+          <span style={{fontSize:24}}>{c.icon}</span>
+          <div className="item-info"><div className="item-title">{c.title}</div><div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres</div></div>
+          <div className="item-actions">
+            {ci>0&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci-1];d[ci-1]=t})}>↑</button>}
+            {ci<courses.length-1&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci+1];d[ci+1]=t})}>↓</button>}
+          </div>
         </div>
-      ))}</div>}
-    </div>}
-
-    <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:32,flexWrap:"wrap"}}>
-      {!cfm?<button style={{...S.sec,borderColor:"#ef444444",color:"#ef4444"}} onClick={()=>setCfm(true)}>Reset Progress</button>:
-      <><button style={{...S.sec,borderColor:"#ef444444",color:"#ef4444"}} onClick={()=>{onReset();setCfm(false)}}>Confirm</button><button style={S.sec} onClick={()=>setCfm(false)}>Cancel</button></>}
-      <button style={{...S.sec,borderColor:"#66666644"}} onClick={onLogout}>Sign Out</button>
-    </div>
+      ))}
+    </div></div>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveLayout}>💾 Sauvegarder et synchroniser</button>
   </div>);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+// ─── RENDER ───────────────────────────────────────────────────
+ReactDOM.createRoot(document.getElementById("root")).render(<AdminApp/>);
 </script>
 </body>
 </html>
