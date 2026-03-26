@@ -246,55 +246,97 @@ const formatLapSeconds=(seconds)=>{
   return `${mins}:${secs.toFixed(3).padStart(6,'0')}`;
 };
 
-const buildTrackProgression=(items,track)=>{
-  return (items||[])
+const DEVELOPMENT_METRICS=[
+  {value:'lap_time',label:'Best lap progression'},
+  {value:'starting_position',label:'Starting position progression'},
+  {value:'finishing_position',label:'Finishing position progression'},
+  {value:'crash_count',label:'Crash count progression'},
+  {value:'crash_rate',label:'Crash-involved session rate'}
+];
+
+const getDevelopmentMetricMeta=(metric)=>{
+  switch(metric){
+    case 'starting_position':
+      return {title:'Starting position progression',empty:'No starting-position data yet for this track.',statLabel:'Best start',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Start P${point.rawValue}`};
+    case 'finishing_position':
+      return {title:'Finishing position progression',empty:'No finishing-position data yet for this track.',statLabel:'Best finish',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Finish P${point.rawValue}`};
+    case 'crash_count':
+      return {title:'Crash count progression',empty:'No crash-count data yet for this track.',statLabel:'Lowest crashes',format:v=>v!=null?`${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash${Math.round(point.rawValue)===1?'':'es'}`};
+    case 'crash_rate':
+      return {title:'Crash-involved session rate',empty:'No crash-rate data yet for this track.',statLabel:'Current crash rate',format:v=>v!=null?`${Math.round(v)}%`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)}% sessions with crashes`};
+    case 'lap_time':
+    default:
+      return {title:'Best lap progression',empty:'No lap-time data yet for this track. Add a session sheet with a best lap to unlock the chart.',statLabel:'Best lap',format:v=>formatLapSeconds(v),tooltip:point=>`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.rawValue)}`};
+  }
+};
+
+const buildTrackMetricSeries=(items,track,metric='lap_time')=>{
+  const base=(items||[])
     .filter(item=>item.track===track)
     .map(item=>({
       ...item,
-      seconds:parseLapTimeToSeconds(item.best_lap||item.average_lap||''),
       sortDate:new Date(`${item.session_date||'1970-01-01'}T12:00:00`).getTime(),
       dateLabel:item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'No date'
     }))
-    .filter(item=>item.seconds!=null)
     .sort((a,b)=>a.sortDate-b.sortDate);
+
+  if(metric==='crash_rate'){
+    let crashedSessions=0;
+    return base.map((item,index)=>{
+      const crashCount=Math.max(0,parseInt(item.crash_count,10)||0);
+      if(crashCount>0)crashedSessions+=1;
+      const value=(crashedSessions/(index+1))*100;
+      return {...item,value,rawValue:value};
+    });
+  }
+
+  return base.map(item=>{
+    let value=null;
+    if(metric==='starting_position') value=parseInt(item.starting_position,10);
+    else if(metric==='finishing_position') value=parseInt(item.finishing_position,10);
+    else if(metric==='crash_count') value=Math.max(0,parseInt(item.crash_count,10)||0);
+    else value=parseLapTimeToSeconds(item.best_lap||item.average_lap||'');
+    return {...item,value,rawValue:value};
+  }).filter(item=>item.value!=null&&!Number.isNaN(item.value));
 };
 
-function LapProgressChart({points,title='Best lap progression'}){
-  if(!points||points.length===0)return <div style={{padding:18,border:'1px dashed #2d2d2d',borderRadius:12,color:'#777',fontSize:13}}>No lap-time data yet for this track. Add a session sheet with a best lap to unlock the chart.</div>;
+function DevelopmentMetricChart({points,title,metric='lap_time'}){
+  const meta=getDevelopmentMetricMeta(metric);
+  if(!points||points.length===0)return <div style={{padding:18,border:'1px dashed #2d2d2d',borderRadius:12,color:'#777',fontSize:13}}>{meta.empty}</div>;
   if(points.length===1)return(
     <div style={{padding:18,border:'1px solid #222',borderRadius:12,background:'#111'}}>
-      <div style={{fontSize:13,color:'#888',marginBottom:6}}>{title}</div>
-      <div style={{fontSize:22,fontWeight:800,color:'#e2e2e2'}}>{points[0].best_lap||formatLapSeconds(points[0].seconds)}</div>
+      <div style={{fontSize:13,color:'#888',marginBottom:6}}>{title||meta.title}</div>
+      <div style={{fontSize:22,fontWeight:800,color:'#e2e2e2'}}>{meta.format(points[0].rawValue)}</div>
       <div style={{fontSize:12,color:'#666',marginTop:4}}>Only one session logged so far on {points[0].dateLabel}. Add another one to see your curve.</div>
     </div>
   );
   const width=100,height=58,pad={left:8,right:4,top:6,bottom:12};
-  const values=points.map(p=>p.seconds);
+  const values=points.map(p=>p.value);
   const min=Math.min(...values),max=Math.max(...values);
-  const spread=Math.max(max-min,0.25);
+  const spread=Math.max(max-min,metric==='lap_time'?0.25:1);
   const stepX=(width-pad.left-pad.right)/Math.max(points.length-1,1);
   const toY=(v)=>pad.top+((v-min)/spread)*(height-pad.top-pad.bottom);
-  const coords=points.map((point,index)=>({x:pad.left+stepX*index,y:toY(point.seconds),point}));
+  const coords=points.map((point,index)=>({x:pad.left+stepX*index,y:toY(point.value),point}));
   const polyline=coords.map(p=>`${p.x},${p.y}`).join(' ');
   const latest=points[points.length-1];
   const first=points[0];
-  const delta=latest.seconds-first.seconds;
+  const delta=latest.value-first.value;
   return(
     <div style={{border:'1px solid #222',borderRadius:12,background:'#111',padding:14}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
         <div>
-          <div style={{fontSize:15,fontWeight:700,color:'#e2e2e2'}}>{title}</div>
+          <div style={{fontSize:15,fontWeight:700,color:'#e2e2e2'}}>{title||meta.title}</div>
           <div style={{fontSize:12,color:'#666',marginTop:2}}>{points.length} logged session{points.length>1?'s':''}</div>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#1b1b1b',border:'1px solid #2a2a2a',color:'#aaa'}}>Best {formatLapSeconds(min)}</span>
-          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Improvement':'Regression'} {Math.abs(delta).toFixed(3)}s</span>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#1b1b1b',border:'1px solid #2a2a2a',color:'#aaa'}}>{meta.statLabel} {meta.format(metric==='crash_rate'?latest.value:min)}</span>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Improvement':'Regression'} {metric==='lap_time'?`${Math.abs(delta).toFixed(3)}s`:metric==='crash_rate'?`${Math.abs(delta).toFixed(0)}%`:Math.abs(delta).toFixed(0)}</span>
         </div>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:220,display:'block'}} preserveAspectRatio='none'>
         {[0,1,2,3].map(i=>{const y=pad.top+((height-pad.top-pad.bottom)/3)*i;return <line key={i} x1={pad.left} y1={y} x2={width-pad.right} y2={y} stroke='#1f1f1f' strokeWidth='0.5'/>;})}
         <polyline fill='none' stroke='#e11d48' strokeWidth='2.4' strokeLinejoin='round' strokeLinecap='round' points={polyline}/>
-        {coords.map(({x,y,point})=><g key={point.id}><circle cx={x} cy={y} r='2.2' fill='#e11d48'/><circle cx={x} cy={y} r='4.8' fill='transparent'><title>{`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.seconds)}`}</title></circle></g>)}
+        {coords.map(({x,y,point})=><g key={point.id}><circle cx={x} cy={y} r='2.2' fill='#e11d48'/><circle cx={x} cy={y} r='4.8' fill='transparent'><title>{meta.tooltip(point)}</title></circle></g>)}
       </svg>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:10,fontSize:11,color:'#777'}}>
         <div>{first.dateLabel}</div>
@@ -752,13 +794,14 @@ function Coaching(){
 // ━━━ SESSION JOURNAL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 function DevelopmentScreen({uid,name}){
-  const emptyForm=()=>({session_date:new Date().toISOString().slice(0,10),car:"",best_lap:"",average_lap:"",focus:"",main_mistake:"",notes:""});
+  const emptyForm=()=>({session_date:new Date().toISOString().slice(0,10),car:"",best_lap:"",average_lap:"",starting_position:"",finishing_position:"",crash_count:"",focus:"",main_mistake:"",notes:""});
   const[items,setItems]=useState([]);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
   const[status,setStatus]=useState("");
   const[editingId,setEditingId]=useState(null);
   const[selectedTrack,setSelectedTrack]=useState("");
+  const[chartMetric,setChartMetric]=useState('lap_time');
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState(emptyForm());
 
@@ -794,10 +837,18 @@ function DevelopmentScreen({uid,name}){
       .sort((a,b)=>new Date(`${b.session_date||'1970-01-01'}T12:00:00`).getTime()-new Date(`${a.session_date||'1970-01-01'}T12:00:00`).getTime());
   },[items,selectedTrack]);
 
-  const chartPoints=React.useMemo(()=>buildTrackProgression(items,selectedTrack),[items,selectedTrack]);
-  const bestSeconds=chartPoints.length?Math.min(...chartPoints.map(point=>point.seconds)):null;
+  const chartPoints=React.useMemo(()=>buildTrackMetricSeries(items,selectedTrack,chartMetric),[items,selectedTrack,chartMetric]);
+  const metricMeta=React.useMemo(()=>getDevelopmentMetricMeta(chartMetric),[chartMetric]);
+  const lapPoints=React.useMemo(()=>buildTrackMetricSeries(items,selectedTrack,'lap_time'),[items,selectedTrack]);
+  const bestSeconds=lapPoints.length?Math.min(...lapPoints.map(point=>point.value)):null;
   const latestSession=filteredItems[0]||null;
   const totalForTrack=filteredItems.length;
+  const bestFinish=filteredItems.filter(item=>parseInt(item.finishing_position,10)>0).reduce((best,item)=>{
+    const pos=parseInt(item.finishing_position,10);
+    return best==null?pos:Math.min(best,pos);
+  },null);
+  const avgStart=filteredItems.filter(item=>parseInt(item.starting_position,10)>0).reduce((acc,item,_,arr)=>acc+(parseInt(item.starting_position,10)||0)/arr.length,0) || null;
+  const totalCrashes=filteredItems.reduce((sum,item)=>sum+Math.max(0,parseInt(item.crash_count,10)||0),0);
 
   const onChange=(key,val)=>setForm(prev=>({...prev,[key]:val}));
   const resetForm=()=>{setEditingId(null);setForm(emptyForm());setShowForm(false);setStatus("")};
@@ -806,7 +857,7 @@ function DevelopmentScreen({uid,name}){
     if(item.track)setSelectedTrack(item.track);
     setEditingId(item.id);
     setShowForm(true);
-    setForm({session_date:item.session_date||new Date().toISOString().slice(0,10),car:item.car||"",best_lap:item.best_lap||"",average_lap:item.average_lap||"",focus:item.focus||"",main_mistake:item.main_mistake||"",notes:item.notes||""});
+    setForm({session_date:item.session_date||new Date().toISOString().slice(0,10),car:item.car||"",best_lap:item.best_lap||"",average_lap:item.average_lap||"",starting_position:item.starting_position!=null?String(item.starting_position):"",finishing_position:item.finishing_position!=null?String(item.finishing_position):"",crash_count:item.crash_count!=null?String(item.crash_count):"",focus:item.focus||"",main_mistake:item.main_mistake||"",notes:item.notes||""});
     setStatus("");
     window.scrollTo({top:0,behavior:'smooth'});
   };
@@ -815,7 +866,7 @@ function DevelopmentScreen({uid,name}){
     if(!selectedTrack){setStatus('Select a track first.');return;}
     if(!form.session_date){setStatus('Please choose a session date.');return;}
     setSaving(true);setStatus('');
-    const payload={session_date:form.session_date,track:selectedTrack,car:form.car.trim()||null,best_lap:form.best_lap.trim()||null,average_lap:form.average_lap.trim()||null,focus:form.focus.trim()||null,main_mistake:form.main_mistake.trim()||null,notes:form.notes.trim()||null};
+    const payload={session_date:form.session_date,track:selectedTrack,car:form.car.trim()||null,best_lap:form.best_lap.trim()||null,average_lap:form.average_lap.trim()||null,starting_position:form.starting_position?Math.max(1,parseInt(form.starting_position,10)||1):null,finishing_position:form.finishing_position?Math.max(1,parseInt(form.finishing_position,10)||1):null,crash_count:form.crash_count===''?0:Math.max(0,parseInt(form.crash_count,10)||0),focus:form.focus.trim()||null,main_mistake:form.main_mistake.trim()||null,notes:form.notes.trim()||null};
     try{
       const row=editingId?await sbUpdateSessionLog(uid,editingId,payload):await sbCreateSessionLog(uid,payload);
       setItems(prev=>{const next=editingId?prev.map(item=>item.id===editingId?row:item):[row,...prev];return [...next].sort((a,b)=>new Date(`${b.session_date||'1970-01-01'}T12:00:00`).getTime()-new Date(`${a.session_date||'1970-01-01'}T12:00:00`).getTime())});
@@ -857,9 +908,20 @@ function DevelopmentScreen({uid,name}){
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:18}}>
         <div style={S.stB}><div style={S.stBN}>{totalForTrack}</div><div style={S.stBL}>Sessions on {selectedTrack}</div></div>
         <div style={S.stB}><div style={{...S.stBN,fontSize:26}}>{bestSeconds!=null?formatLapSeconds(bestSeconds):'—'}</div><div style={S.stBL}>Best logged lap</div></div>
-        <div style={S.stB}><div style={{...S.stBN,fontSize:22}}>{latestSession?.best_lap||latestSession?.average_lap||'—'}</div><div style={S.stBL}>Latest logged pace</div></div>
+        <div style={S.stB}><div style={{...S.stBN,fontSize:24}}>{bestFinish!=null?`P${bestFinish}`:'—'}</div><div style={S.stBL}>Best finish</div></div>
+        <div style={S.stB}><div style={{...S.stBN,fontSize:24}}>{avgStart!=null?`P${avgStart.toFixed(1)}`:'—'}</div><div style={S.stBL}>Average start</div></div>
+        <div style={S.stB}><div style={{...S.stBN,fontSize:24}}>{totalCrashes}</div><div style={S.stBL}>Total crashes logged</div></div>
       </div>
-      <LapProgressChart points={chartPoints} title={`${selectedTrack} · best lap curve`}/>
+      <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(220px,280px)',gap:12,alignItems:'end',marginBottom:12}}>
+        <div>
+          <div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Graph view</div>
+          <select value={chartMetric} onChange={e=>setChartMetric(e.target.value)} style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}>
+            {DEVELOPMENT_METRICS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <div style={{fontSize:12,color:'#666',lineHeight:1.6}}>Show only one development curve at a time to keep the page focused: lap time, positions, crashes, or crash rate.</div>
+      </div>
+      <DevelopmentMetricChart points={chartPoints} metric={chartMetric} title={`${selectedTrack} · ${metricMeta.title.toLowerCase()}`}/>
       <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap',marginTop:18,marginBottom:12}}><div style={{fontSize:16,fontWeight:700,color:'#e2e2e2'}}>Session entries for {selectedTrack}</div><button style={{...S.sec,borderColor:'#e11d4844',color:'#ff7b9a'}} onClick={()=>{setShowForm(v=>!v);setStatus('');if(showForm&&editingId){setEditingId(null);setForm(emptyForm())}}}>{showForm?(editingId?'Close edit':'Hide form'):(editingId?'Edit entry':'Add session entry')}</button></div>
       {showForm&&<div style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16,marginBottom:16}}>
         <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:14}}><div><div style={{fontSize:17,fontWeight:700,color:'#e2e2e2'}}>{editingId?'Edit session entry':'New session entry'}</div><div style={{fontSize:12,color:'#666',marginTop:3}}>Track locked to <span style={{color:'#ff7b9a'}}>{selectedTrack}</span> so the page stays focused.</div></div>{editingId&&<button style={S.sec} onClick={resetForm}>Cancel edit</button>}</div>
@@ -868,6 +930,9 @@ function DevelopmentScreen({uid,name}){
           <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Car</div><input value={form.car} onChange={e=>onChange('car',e.target.value)} placeholder='e.g. Ferrari 296 GT3' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
           <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Best lap</div><input value={form.best_lap} onChange={e=>onChange('best_lap',e.target.value)} placeholder='1:48.532' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
           <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Average lap</div><input value={form.average_lap} onChange={e=>onChange('average_lap',e.target.value)} placeholder='1:49.104' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Starting position</div><input type='number' min='1' value={form.starting_position} onChange={e=>onChange('starting_position',e.target.value)} placeholder='e.g. 12' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Finishing position</div><input type='number' min='1' value={form.finishing_position} onChange={e=>onChange('finishing_position',e.target.value)} placeholder='e.g. 7' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
+          <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Crashes during race</div><input type='number' min='0' value={form.crash_count} onChange={e=>onChange('crash_count',e.target.value)} placeholder='0' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif"}}/></div>
         </div>
         <div style={{display:'grid',gap:10,marginTop:10}}>
           <div><div style={{fontSize:11,color:'#888',letterSpacing:1,textTransform:'uppercase',marginBottom:6}}>Session focus</div><textarea rows={2} value={form.focus} onChange={e=>onChange('focus',e.target.value)} placeholder='What were you working on in this session?' style={{width:'100%',padding:'12px 13px',borderRadius:10,border:'1px solid #2b2b2b',background:'#0d0d0d',color:'#fff',fontSize:15,fontFamily:"'Rajdhani','Segoe UI',sans-serif",resize:'vertical'}}/></div>
@@ -877,7 +942,7 @@ function DevelopmentScreen({uid,name}){
         <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><button style={{...S.pri,opacity:saving?0.85:1}} onClick={submit} disabled={saving}>{saving?(editingId?'Updating...':'Saving...'):(editingId?'Update session entry':'Save session entry')}</button><button style={S.sec} onClick={resetForm}>Clear</button></div>
       </div>}
       {status&&<div style={{fontSize:12,color:status.toLowerCase().includes('could not')||status.toLowerCase().includes('select')?'#fb7185':'#4ade80',marginBottom:14}}>{status}</div>}
-      <div style={{display:'grid',gap:10}}>{loading?<div style={{textAlign:'center',padding:20,color:'#777'}}>Loading development data...</div>:filteredItems.length===0?<div style={{padding:20,border:'1px dashed #2b2b2b',borderRadius:12,color:'#777'}}>No session entries yet for {selectedTrack}. Add one to start your development history.</div>:filteredItems.map(item=><div key={item.id} style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16}}><div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',flexWrap:'wrap'}}><div><div style={{fontSize:16,fontWeight:700,color:'#fff'}}>{item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'No date'}{item.car?` · ${item.car}`:''}</div><div style={{fontSize:12,color:'#666',marginTop:4}}>Track: {item.track||selectedTrack}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{item.best_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#251219',border:'1px solid #4c1d27',color:'#ff7b9a'}}>Best {item.best_lap}</span>}{item.average_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#171717',border:'1px solid #2a2a2a',color:'#bbb'}}>Avg {item.average_lap}</span>}</div></div>{(item.focus||item.main_mistake||item.notes)&&<div style={{display:'grid',gap:8,marginTop:12}}>{item.focus&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Focus</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.focus}</div></div>}{item.main_mistake&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Main mistake</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.main_mistake}</div></div>}{item.notes&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Notes</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd',whiteSpace:'pre-wrap'}}>{item.notes}</div></div>}</div>}<div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><button style={S.sec} onClick={()=>startEdit(item)}>Edit</button><button style={{...S.sec,borderColor:'#7f1d1d44',color:'#fb7185'}} onClick={()=>remove(item.id)}>Delete</button></div></div>)}</div>
+      <div style={{display:'grid',gap:10}}>{loading?<div style={{textAlign:'center',padding:20,color:'#777'}}>Loading development data...</div>:filteredItems.length===0?<div style={{padding:20,border:'1px dashed #2b2b2b',borderRadius:12,color:'#777'}}>No session entries yet for {selectedTrack}. Add one to start your development history.</div>:filteredItems.map(item=><div key={item.id} style={{background:'#111',border:'1px solid #222',borderRadius:14,padding:16}}><div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'flex-start',flexWrap:'wrap'}}><div><div style={{fontSize:16,fontWeight:700,color:'#fff'}}>{item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'No date'}{item.car?` · ${item.car}`:''}</div><div style={{fontSize:12,color:'#666',marginTop:4}}>Track: {item.track||selectedTrack}</div></div><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{item.best_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#251219',border:'1px solid #4c1d27',color:'#ff7b9a'}}>Best {item.best_lap}</span>}{item.average_lap&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#171717',border:'1px solid #2a2a2a',color:'#bbb'}}>Avg {item.average_lap}</span>}{item.starting_position!=null&&item.starting_position!==''&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#141924',border:'1px solid #243047',color:'#9db4ff'}}>Start P{item.starting_position}</span>}{item.finishing_position!=null&&item.finishing_position!==''&&<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#132018',border:'1px solid #214430',color:'#8ee7a8'}}>Finish P{item.finishing_position}</span>}<span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#241617',border:'1px solid #462023',color:'#fca5a5'}}>{Math.max(0,parseInt(item.crash_count,10)||0)} crash{Math.max(0,parseInt(item.crash_count,10)||0)===1?'':'es'}</span></div></div>{(item.focus||item.main_mistake||item.notes)&&<div style={{display:'grid',gap:8,marginTop:12}}>{item.focus&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Focus</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.focus}</div></div>}{item.main_mistake&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Main mistake</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd'}}>{item.main_mistake}</div></div>}{item.notes&&<div><div style={{fontSize:10,color:'#777',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Notes</div><div style={{fontSize:13,lineHeight:1.7,color:'#ddd',whiteSpace:'pre-wrap'}}>{item.notes}</div></div>}</div>}<div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><button style={S.sec} onClick={()=>startEdit(item)}>Edit</button><button style={{...S.sec,borderColor:'#7f1d1d44',color:'#fb7185'}} onClick={()=>remove(item.id)}>Delete</button></div></div>)}</div>
     </>)}</div>);
 }
 
