@@ -253,10 +253,15 @@ function AdminApp() {
     try {
       console.log("[ADMIN SAVE] start", new Date().toISOString());
 
-      const { data: refreshData, error: refreshError } = await sb.auth.refreshSession();
-      if (refreshError || !refreshData?.session) {
-        console.error("[ADMIN SAVE] refresh session error:", refreshError);
-        showToast("Session expirée — reconnectez-vous", "error");
+      const sessionResult = await Promise.race([
+        sb.auth.getSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Session timeout")), 8000))
+      ]);
+
+      const session = sessionResult?.data?.session;
+      if (!session) {
+        console.error("[ADMIN SAVE] no active session");
+        showToast("Session admin absente — reconnecte-toi", "error");
         return;
       }
 
@@ -268,7 +273,10 @@ function AdminApp() {
       }
 
       const settings = JSON.parse(localStorage.getItem("acc-coaching-settings") || "{}");
+
+      console.log("[ADMIN SAVE] saving courses...");
       const r1 = await sbSaveContent("courses", courses);
+      console.log("[ADMIN SAVE] saving settings...");
       const r2 = await sbSaveContent("settings", settings);
 
       if (r1 && r2) {
@@ -277,13 +285,14 @@ function AdminApp() {
         console.log("[ADMIN SAVE] success");
       } else {
         console.error("[ADMIN SAVE] sync failed", { coursesSaved: r1, settingsSaved: r2 });
-        showToast("Erreur synchro — reconnectez-vous", "error");
+        showToast("Erreur synchro — reconnecte-toi", "error");
       }
     } catch (e) {
       console.error("[ADMIN SAVE] unexpected error:", e);
-      showToast("Erreur — reconnectez-vous", "error");
+      showToast(e?.message === "Session timeout" ? "La vérification de session prend trop de temps — reconnecte-toi" : "Erreur — reconnecte-toi", "error");
     } finally {
       setIsSaving(false);
+      console.log("[ADMIN SAVE] end");
     }
   }, [courses, isSaving]);
 
@@ -877,10 +886,16 @@ function CoachingEditor({ showToast }) {
   const c = settings.coaching || {title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
-    await sb.auth.refreshSession();
-    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
-    const ok=await sbSaveContent("settings",s);
-    showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnectez-vous",ok?"success":"error");
+    try{
+      const { data:{session} } = await sb.auth.getSession();
+      if(!session){ showToast("Session admin absente — reconnecte-toi", "error"); return; }
+      const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+      const ok=await sbSaveContent("settings",s);
+      showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnecte-toi",ok?"success":"error");
+    }catch(e){
+      console.error("[COACHING SAVE]", e);
+      showToast("Erreur — reconnecte-toi", "error");
+    }
   };
 
   return(<div>
@@ -913,10 +928,16 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const layout = settings.homeLayout || ["nextLesson","courses"];
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
-    await sb.auth.refreshSession();
-    const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
-    const ok=await sbSaveContent("settings",s);
-    showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnectez-vous",ok?"success":"error");
+    try{
+      const { data:{session} } = await sb.auth.getSession();
+      if(!session){ showToast("Session admin absente — reconnecte-toi", "error"); return; }
+      const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
+      const ok=await sbSaveContent("settings",s);
+      showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnecte-toi",ok?"success":"error");
+    }catch(e){
+      console.error("[LAYOUT SAVE]", e);
+      showToast("Erreur — reconnecte-toi", "error");
+    }
   };
 
   const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
