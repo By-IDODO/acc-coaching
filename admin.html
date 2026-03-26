@@ -436,7 +436,7 @@ function AdminApp() {
         </div>
         <div className="main-content">
           {selected.type === "dashboard" && <DashboardView courses={courses} nav={nav} updateCourses={updateCourses} showToast={showToast}/>}
-          {selected.type === "users" && <UsersView showToast={showToast}/>}
+          {selected.type === "users" && <UsersView showToast={showToast} courses={courses}/>}
           {selected.type === "coaching" && <CoachingEditor showToast={showToast}/>}
           {selected.type === "homeLayout" && <HomeLayoutEditor courses={courses} updateCourses={updateCourses} showToast={showToast}/>}
           {selected.type === "course" && <CourseEditor courses={courses} ci={selected.ci} updateCourses={updateCourses} nav={nav} showToast={showToast}/>}
@@ -813,23 +813,104 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
 }
 
 // ─── USERS VIEW ───────────────────────────────────────────────
-function UsersView({ showToast }) {
+function UsersView({ showToast, courses }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openUserId, setOpenUserId] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await sb.from("profiles").select("id, display_name, email, premium, created_at, last_active");
-      if (data) setUsers(data.sort((a, b) => new Date(b.last_active || 0) - new Date(a.last_active || 0)));
+  const chapterIndex = React.useMemo(() => {
+    const map = {};
+    (courses || []).forEach(course => {
+      (course.levels || []).forEach(level => {
+        (level.chapters || []).forEach(chapter => {
+          map[chapter.id] = {
+            id: chapter.id,
+            title: chapter.title,
+            courseTitle: course.title,
+            courseIcon: course.icon,
+            level: level.level,
+            levelColor: level.color,
+            quizCount: (chapter.quiz || []).length,
+          };
+        });
+      });
+    });
+    return map;
+  }, [courses]);
+
+  const totalChapters = Object.keys(chapterIndex).length;
+
+  const loadUsers = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const [{ data: profiles }, { data: progressRows }] = await Promise.all([
+        sb.from("profiles").select("id, display_name, email, premium, created_at, last_active"),
+        sb.from("progress").select("id, data, updated_at"),
+      ]);
+
+      const progressMap = new Map((progressRows || []).map(row => [row.id, row]));
+      const combined = (profiles || []).map(profile => {
+        const progressRow = progressMap.get(profile.id);
+        const progressData = progressRow?.data || {};
+        const entries = Object.entries(progressData).map(([chapterId, status]) => ({
+          chapterId,
+          ...(status || {}),
+          meta: chapterIndex[chapterId] || null,
+        }));
+
+        const validatedLessons = entries
+          .filter(entry => entry.completed)
+          .sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
+
+        const attemptedLessons = entries
+          .filter(entry => !entry.completed && (entry.bestScore != null || entry.quizScore != null))
+          .sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
+
+        const avgScore = validatedLessons.length
+          ? Math.round(validatedLessons.reduce((sum, entry) => sum + (entry.bestScore ?? entry.quizScore ?? 0), 0) / validatedLessons.length)
+          : null;
+
+        return {
+          ...profile,
+          progressUpdatedAt: progressRow?.updated_at || null,
+          validatedLessons,
+          attemptedLessons,
+          validatedCount: validatedLessons.length,
+          attemptedCount: attemptedLessons.length,
+          avgScore,
+          progressPercent: totalChapters ? Math.round((validatedLessons.length / totalChapters) * 100) : 0,
+        };
+      }).sort((a, b) => {
+        const aDate = new Date(a.last_active || a.progressUpdatedAt || 0).getTime();
+        const bDate = new Date(b.last_active || b.progressUpdatedAt || 0).getTime();
+        return bDate - aDate;
+      });
+
+      setUsers(combined);
+    } catch (e) {
+      console.error("Users load error:", e);
+      showToast("Impossible de charger les utilisateurs", "error");
+    } finally {
       setLoading(false);
-    })();
-  }, []);
+    }
+  }, [chapterIndex, totalChapters, showToast]);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const togglePremium = async (uid, current) => {
-    await sb.from("profiles").update({ premium: !current }).eq("id", uid);
+    const { error } = await sb.from("profiles").update({ premium: !current }).eq("id", uid);
+    if (error) {
+      console.error("Premium update error:", error);
+      showToast("Erreur lors de la mise à jour du premium", "error");
+      return;
+    }
     setUsers(prev => prev.map(u => u.id === uid ? { ...u, premium: !current } : u));
     showToast(!current ? "Premium activé !" : "Premium retiré");
   };
+
+  const premiumCount = users.filter(u => u.premium).length;
+  const activeLearners = users.filter(u => u.validatedCount > 0 || u.attemptedCount > 0).length;
+  const totalValidated = users.reduce((sum, u) => sum + u.validatedCount, 0);
 
   if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Chargement des utilisateurs...</div>;
 
@@ -837,25 +918,115 @@ function UsersView({ showToast }) {
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
         <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{users.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{users.filter(u=>u.premium).length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{premiumCount}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{activeLearners}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS ACTIFS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalValidated}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>LEÇONS VALIDÉES</div></div></div>
       </div>
 
       <div className="card">
-        <div className="card-header"><div className="card-title">👥 Tous les utilisateurs</div></div>
+        <div className="card-header" style={{gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
+          <div>
+            <div className="card-title">👥 Tous les utilisateurs</div>
+            <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>Clique sur un utilisateur pour voir les leçons validées, les scores de quiz et les tentatives non validées.</div>
+          </div>
+          <button className="btn btn-secondary btn-sm" onClick={loadUsers}>↻ Rafraîchir</button>
+        </div>
         <div className="card-body">
           {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> :
-          users.map(u => (
-            <div key={u.id} className="list-item">
-              <div style={{width:36,height:36,borderRadius:"50%",background:u.premium?"var(--yellow)22":"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{u.premium?"👑":"👤"}</div>
-              <div className="item-info">
-                <div className="item-title">{u.display_name || "Sans nom"}</div>
-                <div className="item-sub">{u.email} · Inscrit le {new Date(u.created_at).toLocaleDateString("fr-FR")}</div>
+          users.map(u => {
+            const isOpen = openUserId === u.id;
+            return (
+              <div key={u.id} style={{border:"1px solid var(--border)",borderRadius:12,marginBottom:12,overflow:"hidden",background:"var(--surface)"}}>
+                <div style={{display:"flex",gap:12,alignItems:"center",padding:16,flexWrap:"wrap"}}>
+                  <div style={{width:40,height:40,borderRadius:"50%",background:u.premium?"var(--yellow)22":"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{u.premium?"👑":"👤"}</div>
+                  <div style={{flex:1,minWidth:220}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <div style={{fontWeight:700,fontSize:14}}>{u.display_name || "Sans nom"}</div>
+                      {u.premium && <span style={{fontSize:10,fontWeight:700,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>PREMIUM</span>}
+                    </div>
+                    <div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>{u.email}</div>
+                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>
+                      Inscrit le {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}
+                      {u.last_active ? ` · Dernière activité ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                      {u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    </div>
+                  </div>
+
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",marginLeft:"auto"}}>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
+                      <div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div>
+                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDÉES</div>
+                    </div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
+                      <div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div>
+                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>MOYENNE</div>
+                    </div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
+                      <div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div>
+                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESSION</div>
+                    </div>
+                  </div>
+
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>
+                      {u.premium ? "Retirer Premium" : "👑 Premium"}
+                    </button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setOpenUserId(isOpen ? null : u.id)}>
+                      {isOpen ? "Masquer le détail" : "Voir le détail"}
+                    </button>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div style={{padding:"0 16px 16px",borderTop:"1px solid var(--border)",background:"var(--bg)"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,paddingTop:16}}>
+                      <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
+                        <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>✅ Leçons validées ({u.validatedCount})</div>
+                        <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>
+                          {u.validatedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune leçon validée pour l'instant.</div> : u.validatedLessons.map((entry, index) => (
+                            <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}>
+                              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+                                <div>
+                                  <div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div>
+                                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div>
+                                </div>
+                                <div style={{fontSize:12,fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div>
+                              </div>
+                              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
+                                <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--green)22",color:"var(--green)",border:"1px solid var(--green)44"}}>Quiz validé</span>
+                                {entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
+                        <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>🟡 Quiz tentés non validés ({u.attemptedCount})</div>
+                        <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>
+                          {u.attemptedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune tentative non validée.</div> : u.attemptedLessons.map((entry, index) => (
+                            <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}>
+                              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+                                <div>
+                                  <div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div>
+                                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div>
+                                </div>
+                                <div style={{fontSize:12,fontWeight:700,color:"var(--yellow)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div>
+                              </div>
+                              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
+                                <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>Sous 70%</span>
+                                {entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>
-                {u.premium ? "Retirer Premium" : "👑 Premium"}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
