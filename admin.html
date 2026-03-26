@@ -245,6 +245,8 @@ function AdminApp() {
   const showToast = (message, type="success") => setToast({ message, type, key: Date.now() });
 
   const save = useCallback(async () => {
+    // Refresh auth session first
+    await sb.auth.refreshSession();
     // Save to localStorage (instant)
     saveData(courses);
     // Save to Supabase (propagates to all users)
@@ -255,12 +257,12 @@ function AdminApp() {
       if(r1 && r2) {
         showToast("Sauvegardé et synchronisé !");
       } else {
-        showToast("Sauvé en local. Erreur synchro Supabase — vérifiez la console (F12)", "error");
+        showToast("Erreur synchro — essayez de vous reconnecter", "error");
       }
       setHasChanges(false);
     } catch(e) {
       console.error("Save error:", e);
-      showToast("Erreur de synchronisation", "error");
+      showToast("Erreur — reconnectez-vous", "error");
     }
   }, [courses]);
 
@@ -852,9 +854,10 @@ function CoachingEditor({ showToast }) {
   const c = settings.coaching || {title:"1-on-1 Coaching",subtitle:"Take your driving to the next level with a personalized solo session",sessionTitle:"Solo Session",sessionSub:"1 hour · Private · All levels",sessionDesc:"Get dedicated attention from an experienced ACC coach.",features:["Telemetry analysis & driving review","Personalized technique training","Custom improvement plan","Controller & setup optimization","Race strategy & racecraft coaching"],bookUrl:"https://www.xboxcommunityleague.com/shop",bookLabel:"Book Your Session"};
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
+    await sb.auth.refreshSession();
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
-    await sbSaveContent("settings",s);
-    showToast("Page coaching sauvegardée et synchronisée !");
+    const ok=await sbSaveContent("settings",s);
+    showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnectez-vous",ok?"success":"error");
   };
 
   return(<div>
@@ -887,9 +890,10 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const layout = settings.homeLayout || ["nextLesson","courses"];
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
+    await sb.auth.refreshSession();
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
-    await sbSaveContent("settings",s);
-    showToast("Layout sauvegardé et synchronisé !");
+    const ok=await sbSaveContent("settings",s);
+    showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnectez-vous",ok?"success":"error");
   };
 
   const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
