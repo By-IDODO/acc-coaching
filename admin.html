@@ -128,7 +128,7 @@
 <div id="root"></div>
 <script>
 (function(){
-  const VERSION = "2026.03.26.4";
+  const VERSION = "2026.03.26.5";
   window.ADMIN_APP_VERSION = VERSION;
   console.log("[ADMIN BOOT] version", VERSION);
 
@@ -248,16 +248,54 @@ const withTimeout=(promise,ms,label="Operation")=>Promise.race([promise,new Prom
 const sbSaveContent=async(key,val)=>{
   try{
     console.log(`[SUPABASE SAVE] ${key} start`);
-    const { error } = await withTimeout(
-      sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()}),
-      12000,
+
+    const sessionResult = await withTimeout(sb.auth.getSession(), 8000, `Session ${key}`);
+    const session = sessionResult?.data?.session;
+    const accessToken = session?.access_token;
+
+    if(!accessToken){
+      console.error(`[SUPABASE SAVE] ${key} no session token`);
+      return false;
+    }
+
+    const payload = [{
+      key,
+      data: val,
+      updated_at: new Date().toISOString()
+    }];
+
+    console.log(`[SUPABASE SAVE] ${key} payload chars`, JSON.stringify(payload).length);
+
+    const response = await withTimeout(
+      fetch(`${SUPABASE_URL}/rest/v1/app_content?on_conflict=key`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_ANON,
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates,return=minimal"
+        },
+        body: JSON.stringify(payload)
+      }),
+      20000,
       `Save ${key}`
     );
-    if(error){console.error(`[SUPABASE SAVE] ${key} error`,error);return false}
+
+    const rawText = await response.text();
+
+    if(!response.ok){
+      console.error(`[SUPABASE SAVE] ${key} http error`, response.status, rawText);
+      return false;
+    }
+
+    if(rawText){
+      console.log(`[SUPABASE SAVE] ${key} response`, rawText.slice(0, 300));
+    }
+
     console.log(`[SUPABASE SAVE] ${key} success`);
     return true
   }catch(e){
-    console.error(`[SUPABASE SAVE] ${key} catch`,e);
+    console.error(`[SUPABASE SAVE] ${key} catch`, e?.name || e, e);
     return false
   }
 };
