@@ -445,7 +445,7 @@ function Lesson({cid,chid,prog,upd,nav}){
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
         <div style={{...S.lvB,display:"inline-flex",background:lv.color+"22",color:lv.color,borderColor:lv.color+"44"}}>{lv.level}</div>
         {hasQuiz&&<div style={{...S.lvB,display:"inline-flex",background:"#e11d4822",color:"#e11d48",borderColor:"#e11d4844"}}>Quiz: {ch.quiz.length} question{ch.quiz.length>1?"s":""}</div>}
-        {best!=null&&<div style={{...S.lvB,display:"inline-flex",background:(prog[chid]?.completed?"#22c55e22":"#f59e0b22"),color:(prog[chid]?.completed?"#22c55e":"#f59e0b"),borderColor:(prog[chid]?.completed?"#22c55e44":"#f59e0b44")}}>{Math.round(best)}% meilleur score</div>}
+        {best!=null&&<div style={{...S.lvB,display:"inline-flex",background:(prog[chid]?.completed?"#22c55e22":"#f59e0b22"),color:(prog[chid]?.completed?"#22c55e":"#f59e0b"),borderColor:(prog[chid]?.completed?"#22c55e44":"#f59e0b44")}}>{Math.round(best)}% best score</div>}
       </div>
       <div style={S.pgT}>{ch.title}</div><div style={S.pgS}>{ch.desc}</div>
     </div>
@@ -453,11 +453,11 @@ function Lesson({cid,chid,prog,upd,nav}){
       {ch.videoUrl&&<div style={{marginBottom:24}}><div style={{borderRadius:10,overflow:"hidden",border:"1px solid #222"}}><iframe src={ch.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>{ch.videoSource&&<div className="vid-source">Source: {ch.videoSource}</div>}</div>}
       {ch.content.map((b,i)=>renderBlock(b,i))}
       {hasQuiz&&<div style={{marginTop:28,padding:16,border:"1px solid #2a2a2a",borderRadius:14,background:"#111"}}>
-        <div style={{fontSize:16,fontWeight:700,color:"#e2e2e2",marginBottom:6}}>Prêt pour le quiz de cette leçon ?</div>
-        <div style={{fontSize:13,color:"#8a8a8a",lineHeight:1.6,marginBottom:14}}>Valide la leçon avec son quiz correspondant. Il faut 70% pour la marquer comme terminée.</div>
+        <div style={{fontSize:16,fontWeight:700,color:"#e2e2e2",marginBottom:6}}>Ready for this lesson's quiz?</div>
+        <div style={{fontSize:13,color:"#8a8a8a",lineHeight:1.6,marginBottom:14}}>Complete this lesson by passing its matching quiz. You need 70% to mark it as completed.</div>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-          <button style={S.pri} onClick={()=>nav("quizplay",{courseId:cid,chapterId:chid})}>✅ Ouvrir le quiz de cette leçon</button>
-          <button style={S.sec} onClick={()=>nav("quiz")}>Voir tous les quiz</button>
+          <button style={S.pri} onClick={()=>nav("quizplay",{courseId:cid,chapterId:chid})}>Open this lesson's quiz</button>
+          <button style={S.sec} onClick={()=>nav("quiz")}>View all quizzes</button>
         </div>
       </div>}
     </div>
