@@ -110,8 +110,8 @@ const loadLocal=(key)=>{try{const c=localStorage.getItem(key);if(c)return JSON.p
 const saveLocal=(key,data)=>{try{localStorage.setItem(key,JSON.stringify(data))}catch(e){}};
 
 // Supabase content helpers
-const sbLoadContent=async(key)=>{try{const{data}=await sb.from("app_content").select("data").eq("key",key).single();return data?.data||null}catch(e){return null}};
-const sbSaveContent=async(key,data)=>{await sb.from("app_content").upsert({key,data,updated_at:new Date().toISOString()})};
+const sbLoadContent=async(key)=>{try{const{data,error}=await sb.from("app_content").select("data").eq("key",key).maybeSingle();if(error)console.warn("Content load error:",error);return data?.data||null}catch(e){return null}};
+const sbSaveContent=async(key,val)=>{try{const{error}=await sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()});if(error)console.error("Content save error:",error)}catch(e){}};
 const DEFAULT_COURSES=[
 {id:"pilotage",title:"Pure Driving",icon:"🏎️",desc:"Master the fundamentals of driving on ACC Console",levels:[
 {level:"Beginner",color:"#22c55e",chapters:[
