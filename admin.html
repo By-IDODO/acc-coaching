@@ -128,7 +128,7 @@
 <div id="root"></div>
 <script>
 (function(){
-  const VERSION = "2026.03.26.3";
+  const VERSION = "2026.03.26.4";
   window.ADMIN_APP_VERSION = VERSION;
   console.log("[ADMIN BOOT] version", VERSION);
 
@@ -244,7 +244,23 @@ const saveData = (data) => {
 };
 // Supabase content sync
 const sbLoadContent=async(key)=>{try{const{data,error}=await sb.from("app_content").select("data").eq("key",key).maybeSingle();if(error)console.warn("Load error:",error);return data?.data||null}catch(e){console.warn("Load catch:",e);return null}};
-const sbSaveContent=async(key,val)=>{try{const{error}=await sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()});if(error){console.error("Save error:",error);return false}return true}catch(e){console.error("Save catch:",e);return false}};
+const withTimeout=(promise,ms,label="Operation")=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+" timeout")),ms))]);
+const sbSaveContent=async(key,val)=>{
+  try{
+    console.log(`[SUPABASE SAVE] ${key} start`);
+    const { error } = await withTimeout(
+      sb.from("app_content").upsert({key,data:val,updated_at:new Date().toISOString()}),
+      12000,
+      `Save ${key}`
+    );
+    if(error){console.error(`[SUPABASE SAVE] ${key} error`,error);return false}
+    console.log(`[SUPABASE SAVE] ${key} success`);
+    return true
+  }catch(e){
+    console.error(`[SUPABASE SAVE] ${key} catch`,e);
+    return false
+  }
+};
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
@@ -277,18 +293,6 @@ function AdminApp() {
     try {
       console.log("[ADMIN SAVE] start", new Date().toISOString());
 
-      const sessionResult = await Promise.race([
-        sb.auth.getSession(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Session timeout")), 8000))
-      ]);
-
-      const session = sessionResult?.data?.session;
-      if (!session) {
-        console.error("[ADMIN SAVE] no active session");
-        showToast("Session admin absente — reconnecte-toi", "error");
-        return;
-      }
-
       const localOk = saveData(courses);
       if (!localOk) {
         console.error("[ADMIN SAVE] localStorage save failed");
@@ -309,11 +313,11 @@ function AdminApp() {
         console.log("[ADMIN SAVE] success");
       } else {
         console.error("[ADMIN SAVE] sync failed", { coursesSaved: r1, settingsSaved: r2 });
-        showToast("Erreur synchro — reconnecte-toi", "error");
+        showToast("Sauvegardé en local, mais la synchro cloud a échoué. Reconnecte-toi puis réessaie.", "error");
       }
     } catch (e) {
       console.error("[ADMIN SAVE] unexpected error:", e);
-      showToast(e?.message === "Session timeout" ? "La vérification de session prend trop de temps — reconnecte-toi" : "Erreur — reconnecte-toi", "error");
+      showToast("Sauvegardé en local, mais la synchro cloud a bloqué. Réessaie dans quelques secondes.", "error");
     } finally {
       setIsSaving(false);
       console.log("[ADMIN SAVE] end");
@@ -921,14 +925,12 @@ function CoachingEditor({ showToast }) {
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
     try{
-      const { data:{session} } = await sb.auth.getSession();
-      if(!session){ showToast("Session admin absente — reconnecte-toi", "error"); return; }
       const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
       const ok=await sbSaveContent("settings",s);
-      showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnecte-toi",ok?"success":"error");
+      showToast(ok?"Page coaching sauvegardée et synchronisée !":"Sauvegardé en local, mais la synchro cloud a échoué.",ok?"success":"error");
     }catch(e){
       console.error("[COACHING SAVE]", e);
-      showToast("Erreur — reconnecte-toi", "error");
+      showToast("Sauvegardé en local, mais la synchro cloud a bloqué.", "error");
     }
   };
 
@@ -963,14 +965,12 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
     try{
-      const { data:{session} } = await sb.auth.getSession();
-      if(!session){ showToast("Session admin absente — reconnecte-toi", "error"); return; }
       const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
       const ok=await sbSaveContent("settings",s);
-      showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnecte-toi",ok?"success":"error");
+      showToast(ok?"Layout sauvegardé et synchronisé !":"Sauvegardé en local, mais la synchro cloud a échoué.",ok?"success":"error");
     }catch(e){
       console.error("[LAYOUT SAVE]", e);
-      showToast("Erreur — reconnecte-toi", "error");
+      showToast("Sauvegardé en local, mais la synchro cloud a bloqué.", "error");
     }
   };
 
