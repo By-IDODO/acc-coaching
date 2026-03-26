@@ -138,6 +138,71 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // ━━━ ADMIN EMAIL — Change this to YOUR email ━━━━━━━━━━━━━━━━
 const ADMIN_EMAIL = "dorian.castelli29@gmail.com";
 
+
+const ACC_TRACKS=["Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
+const parseLapTimeToSeconds=(value)=>{
+  if(value==null)return null;
+  const raw=String(value).trim().replace(/,/g,'.');
+  if(!raw)return null;
+  if(/^\d+:\d{2}\.\d{1,3}$/.test(raw)){
+    const [m,s]=raw.split(':');
+    return parseInt(m,10)*60+parseFloat(s);
+  }
+  if(/^\d+:\d{2}$/.test(raw)){
+    const [m,s]=raw.split(':');
+    return parseInt(m,10)*60+parseInt(s,10);
+  }
+  if(/^\d+\.\d{1,3}$/.test(raw)||/^\d+$/.test(raw))return parseFloat(raw);
+  return null;
+};
+const formatLapSeconds=(seconds)=>{
+  if(seconds==null||Number.isNaN(seconds))return '—';
+  const mins=Math.floor(seconds/60);
+  const secs=seconds-mins*60;
+  return `${mins}:${secs.toFixed(3).padStart(6,'0')}`;
+};
+const buildTrackProgression=(items,track)=>((items||[])
+  .filter(item=>item.track===track)
+  .map(item=>({
+    ...item,
+    seconds:parseLapTimeToSeconds(item.best_lap||item.average_lap||''),
+    sortDate:new Date(`${item.session_date||'1970-01-01'}T12:00:00`).getTime(),
+    dateLabel:item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'Sans date'
+  }))
+  .filter(item=>item.seconds!=null)
+  .sort((a,b)=>a.sortDate-b.sortDate));
+function AdminLapProgressChart({points,title}){
+  if(!points||points.length===0)return <div style={{padding:16,border:'1px dashed var(--border)',borderRadius:12,fontSize:12,color:'var(--text3)'}}>Aucune donnée de chrono pour ce circuit.</div>;
+  if(points.length===1)return <div style={{padding:16,border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)'}}><div style={{fontSize:13,color:'var(--text2)',marginBottom:6}}>{title}</div><div style={{fontSize:24,fontWeight:800,color:'var(--text1)'}}>{points[0].best_lap||formatLapSeconds(points[0].seconds)}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>Une seule session enregistrée le {points[0].dateLabel}.</div></div>;
+  const width=100,height=58,pad={left:8,right:4,top:6,bottom:12};
+  const values=points.map(p=>p.seconds);
+  const min=Math.min(...values),max=Math.max(...values);
+  const spread=Math.max(max-min,0.25);
+  const stepX=(width-pad.left-pad.right)/Math.max(points.length-1,1);
+  const toY=(v)=>pad.top+((v-min)/spread)*(height-pad.top-pad.bottom);
+  const coords=points.map((point,index)=>({x:pad.left+stepX*index,y:toY(point.seconds),point}));
+  const polyline=coords.map(p=>`${p.x},${p.y}`).join(' ');
+  const latest=points[points.length-1];
+  const first=points[0];
+  const delta=latest.seconds-first.seconds;
+  return <div style={{border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)',padding:14}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+      <div><div style={{fontSize:14,fontWeight:700,color:'var(--text1)'}}>{title}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{points.length} session{points.length>1?'s':''}</div></div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'var(--surface3)',border:'1px solid var(--border)',color:'var(--text2)'}}>Best {formatLapSeconds(min)}</span>
+        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Progression':'Régression'} {Math.abs(delta).toFixed(3)}s</span>
+      </div>
+    </div>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:220,display:'block'}} preserveAspectRatio='none'>
+      {[0,1,2,3].map(i=>{const y=pad.top+((height-pad.top-pad.bottom)/3)*i;return <line key={i} x1={pad.left} y1={y} x2={width-pad.right} y2={y} stroke='#1f1f1f' strokeWidth='0.5'/>})}
+      <polyline fill='none' stroke='var(--accent)' strokeWidth='2.4' strokeLinejoin='round' strokeLinecap='round' points={polyline}/>
+      {coords.map(({x,y,point})=><g key={point.id}><circle cx={x} cy={y} r='2.2' fill='var(--accent)'/><circle cx={x} cy={y} r='4.8' fill='transparent'><title>{`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.seconds)}`}</title></circle></g>)}
+    </svg>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,marginTop:10,fontSize:11,color:'var(--text3)'}}><div>{first.dateLabel}</div><div>{latest.dateLabel}</div></div>
+  </div>;
+}
+
+
 // ─── STORAGE ──────────────────────────────────────────────────
 const DATA_KEY = "acc-coaching-courses";
 const PROGRESS_KEY = "acc-coaching-progress";
@@ -813,10 +878,12 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
 }
 
 // ─── USERS VIEW ───────────────────────────────────────────────
+
 function UsersView({ showToast, courses }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openUserId, setOpenUserId] = useState(null);
+  const [trackFilters, setTrackFilters] = useState({});
 
   const chapterIndex = React.useMemo(() => {
     const map = {};
@@ -843,12 +910,22 @@ function UsersView({ showToast, courses }) {
   const loadUsers = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [{ data: profiles }, { data: progressRows }] = await Promise.all([
+      const [{ data: profiles }, { data: progressRows }, { data: sessionLogRows }, { data: activityRows }] = await Promise.all([
         sb.from("profiles").select("id, display_name, email, premium, created_at, last_active"),
         sb.from("progress").select("id, data, updated_at"),
+        sb.from("session_logs").select("id, user_id, session_date, track, car, best_lap, average_lap, focus, main_mistake, notes, created_at, updated_at").order("session_date", { ascending: false }).order("created_at", { ascending: false }),
+        sb.from("user_activity").select("user_id, last_active"),
       ]);
 
       const progressMap = new Map((progressRows || []).map(row => [row.id, row]));
+      const activityMap = new Map((activityRows || []).map(row => [row.user_id, row.last_active]));
+      const sessionLogMap = new Map();
+      (sessionLogRows || []).forEach(row => {
+        const arr = sessionLogMap.get(row.user_id) || [];
+        arr.push(row);
+        sessionLogMap.set(row.user_id, arr);
+      });
+
       const combined = (profiles || []).map(profile => {
         const progressRow = progressMap.get(profile.id);
         const progressData = progressRow?.data || {};
@@ -858,35 +935,34 @@ function UsersView({ showToast, courses }) {
           meta: chapterIndex[chapterId] || null,
         }));
 
-        const validatedLessons = entries
-          .filter(entry => entry.completed)
-          .sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
-
-        const attemptedLessons = entries
-          .filter(entry => !entry.completed && (entry.bestScore != null || entry.quizScore != null))
-          .sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
-
-        const avgScore = validatedLessons.length
-          ? Math.round(validatedLessons.reduce((sum, entry) => sum + (entry.bestScore ?? entry.quizScore ?? 0), 0) / validatedLessons.length)
-          : null;
+        const validatedLessons = entries.filter(entry => entry.completed).sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
+        const attemptedLessons = entries.filter(entry => !entry.completed && (entry.bestScore != null || entry.quizScore != null)).sort((a, b) => (b.bestScore ?? b.quizScore ?? -1) - (a.bestScore ?? a.quizScore ?? -1));
+        const avgScore = validatedLessons.length ? Math.round(validatedLessons.reduce((sum, entry) => sum + (entry.bestScore ?? entry.quizScore ?? 0), 0) / validatedLessons.length) : null;
+        const sessionLogs = (sessionLogMap.get(profile.id) || []).slice().sort((a, b) => new Date(`${b.session_date || '1970-01-01'}T12:00:00`).getTime() - new Date(`${a.session_date || '1970-01-01'}T12:00:00`).getTime());
 
         return {
           ...profile,
+          last_active: activityMap.get(profile.id) || profile.last_active || null,
           progressUpdatedAt: progressRow?.updated_at || null,
           validatedLessons,
           attemptedLessons,
+          sessionLogs,
+          sessionCount: sessionLogs.length,
           validatedCount: validatedLessons.length,
           attemptedCount: attemptedLessons.length,
           avgScore,
           progressPercent: totalChapters ? Math.round((validatedLessons.length / totalChapters) * 100) : 0,
         };
-      }).sort((a, b) => {
-        const aDate = new Date(a.last_active || a.progressUpdatedAt || 0).getTime();
-        const bDate = new Date(b.last_active || b.progressUpdatedAt || 0).getTime();
-        return bDate - aDate;
-      });
+      }).sort((a, b) => new Date(b.last_active || b.progressUpdatedAt || 0).getTime() - new Date(a.last_active || a.progressUpdatedAt || 0).getTime());
 
       setUsers(combined);
+      setTrackFilters(prev => {
+        const next = { ...prev };
+        combined.forEach(user => {
+          if (!next[user.id]) next[user.id] = user.sessionLogs.find(log => log.track && ACC_TRACKS.includes(log.track))?.track || "";
+        });
+        return next;
+      });
     } catch (e) {
       console.error("Users load error:", e);
       showToast("Impossible de charger les utilisateurs", "error");
@@ -909,8 +985,9 @@ function UsersView({ showToast, courses }) {
   };
 
   const premiumCount = users.filter(u => u.premium).length;
-  const activeLearners = users.filter(u => u.validatedCount > 0 || u.attemptedCount > 0).length;
+  const activeLearners = users.filter(u => u.validatedCount > 0 || u.attemptedCount > 0 || u.sessionCount > 0).length;
   const totalValidated = users.reduce((sum, u) => sum + u.validatedCount, 0);
+  const totalSessionSheets = users.reduce((sum, u) => sum + (u.sessionCount || 0), 0);
 
   if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Chargement des utilisateurs...</div>;
 
@@ -921,20 +998,26 @@ function UsersView({ showToast, courses }) {
         <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{premiumCount}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
         <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{activeLearners}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS ACTIFS</div></div></div>
         <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalValidated}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>LEÇONS VALIDÉES</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"#a855f7"}}>{totalSessionSheets}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>FICHES SESSION</div></div></div>
       </div>
 
       <div className="card">
         <div className="card-header" style={{gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
           <div>
             <div className="card-title">👥 Tous les utilisateurs</div>
-            <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>Clique sur un utilisateur pour voir les leçons validées, les scores de quiz et les tentatives non validées.</div>
+            <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>Chaque profil permet maintenant de lire les fiches de session privées et d'afficher une courbe d'évolution des chronos, circuit par circuit.</div>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={loadUsers}>↻ Rafraîchir</button>
         </div>
         <div className="card-body">
-          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> :
-          users.map(u => {
+          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> : users.map(u => {
             const isOpen = openUserId === u.id;
+            const selectedTrack = trackFilters[u.id] || u.sessionLogs.find(log => log.track && ACC_TRACKS.includes(log.track))?.track || "";
+            const trackOptions = ACC_TRACKS.filter(track => u.sessionLogs.some(log => log.track === track));
+            const filteredLogs = selectedTrack ? u.sessionLogs.filter(log => log.track === selectedTrack) : [];
+            const chartPoints = selectedTrack ? buildTrackProgression(u.sessionLogs, selectedTrack) : [];
+            const bestSeconds = chartPoints.length ? Math.min(...chartPoints.map(point => point.seconds)) : null;
+            const latestTrackLog = filteredLogs[0] || null;
             return (
               <div key={u.id} style={{border:"1px solid var(--border)",borderRadius:12,marginBottom:12,overflow:"hidden",background:"var(--surface)"}}>
                 <div style={{display:"flex",gap:12,alignItems:"center",padding:16,flexWrap:"wrap"}}>
@@ -945,85 +1028,49 @@ function UsersView({ showToast, courses }) {
                       {u.premium && <span style={{fontSize:10,fontWeight:700,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>PREMIUM</span>}
                     </div>
                     <div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>{u.email}</div>
-                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>
-                      Inscrit le {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}
-                      {u.last_active ? ` · Dernière activité ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
-                      {u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}
-                    </div>
+                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Inscrit le {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}{u.last_active ? ` · Dernière activité ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}{u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
                   </div>
-
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginLeft:"auto"}}>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
-                      <div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div>
-                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDÉES</div>
-                    </div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
-                      <div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div>
-                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>MOYENNE</div>
-                    </div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}>
-                      <div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div>
-                      <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESSION</div>
-                    </div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:118,textAlign:"center"}}><div style={{fontSize:12,fontWeight:800,color:"var(--text1)"}}>{u.last_active ? new Date(u.last_active).toLocaleDateString("fr-FR") : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>LAST ACTIVE</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDÉES</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>MOYENNE</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESSION</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{u.sessionCount || 0}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>FICHES</div></div>
                   </div>
-
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>
-                      {u.premium ? "Retirer Premium" : "👑 Premium"}
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setOpenUserId(isOpen ? null : u.id)}>
-                      {isOpen ? "Masquer le détail" : "Voir le détail"}
-                    </button>
+                    <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>{u.premium ? "Retirer Premium" : "👑 Premium"}</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setOpenUserId(isOpen ? null : u.id)}>{isOpen ? "Masquer le détail" : "Voir le détail"}</button>
                   </div>
                 </div>
-
-                {isOpen && (
-                  <div style={{padding:"0 16px 16px",borderTop:"1px solid var(--border)",background:"var(--bg)"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,paddingTop:16}}>
-                      <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
-                        <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>✅ Leçons validées ({u.validatedCount})</div>
-                        <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>
-                          {u.validatedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune leçon validée pour l'instant.</div> : u.validatedLessons.map((entry, index) => (
-                            <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}>
-                              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
-                                <div>
-                                  <div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div>
-                                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div>
-                                </div>
-                                <div style={{fontSize:12,fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div>
-                              </div>
-                              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
-                                <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--green)22",color:"var(--green)",border:"1px solid var(--green)44"}}>Quiz validé</span>
-                                {entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
-                        <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>🟡 Quiz tentés non validés ({u.attemptedCount})</div>
-                        <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>
-                          {u.attemptedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune tentative non validée.</div> : u.attemptedLessons.map((entry, index) => (
-                            <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}>
-                              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
-                                <div>
-                                  <div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div>
-                                  <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div>
-                                </div>
-                                <div style={{fontSize:12,fontWeight:700,color:"var(--yellow)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div>
-                              </div>
-                              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>
-                                <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>Sous 70%</span>
-                                {entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                {isOpen && <div style={{padding:"0 16px 16px",borderTop:"1px solid var(--border)",background:"var(--bg)"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,paddingTop:16}}>
+                    <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
+                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>✅ Leçons validées ({u.validatedCount})</div>
+                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.validatedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune leçon validée pour l'instant.</div> : u.validatedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--green)22",color:"var(--green)",border:"1px solid var(--green)44"}}>Quiz validé</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
+                    </div>
+                    <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
+                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>🟡 Quiz tentés non validés ({u.attemptedCount})</div>
+                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.attemptedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune tentative non validée.</div> : u.attemptedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--yellow)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>Sous 70%</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
                     </div>
                   </div>
-                )}
+                  <div style={{marginTop:16,border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>📈 Développement piste par piste</div>
+                    <div style={{padding:12}}>
+                      {u.sessionCount === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune fiche de session enregistrée.</div> : <>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:14}}>
+                          <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Circuit</div><select className="form-input" value={selectedTrack} onChange={e=>setTrackFilters(prev=>({...prev,[u.id]:e.target.value}))}><option value="">Choisir un circuit</option>{trackOptions.map(track=><option key={track} value={track}>{track}</option>)}</select></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{filteredLogs.length}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>SESSIONS SUR CE CIRCUIT</div></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{bestSeconds != null ? formatLapSeconds(bestSeconds) : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>BEST LOGGÉ</div></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{latestTrackLog?.best_lap || latestTrackLog?.average_lap || "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>DERNIER RYTHME</div></div>
+                        </div>
+                        {!selectedTrack ? <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>Sélectionne un circuit pour afficher la courbe et les fiches correspondantes.</div> : <>
+                          <AdminLapProgressChart points={chartPoints} title={`${selectedTrack} · courbe des meilleurs tours`} />
+                          <div style={{marginTop:14,maxHeight:360,overflowY:"auto",display:"grid",gap:8}}>{filteredLogs.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune fiche pour ce circuit.</div> : filteredLogs.map(log => <div key={log.id} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)"}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}><div><div style={{fontWeight:700,fontSize:13}}>{log.session_date ? new Date(`${log.session_date}T12:00:00`).toLocaleDateString("fr-FR") : "Sans date"}{log.car ? ` · ${log.car}` : ""}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{selectedTrack}{log.updated_at ? ` · maj ${new Date(log.updated_at).toLocaleDateString("fr-FR")} ${new Date(log.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{log.best_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff6b8a",border:"1px solid #e11d4844"}}>Best {log.best_lap}</span>}{log.average_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>Avg {log.average_lap}</span>}</div></div>{(log.focus || log.main_mistake || log.notes) && <div style={{display:"grid",gap:8,marginTop:10}}>{log.focus && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Focus</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.focus}</div></div>}{log.main_mistake && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Main issue</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.main_mistake}</div></div>}{log.notes && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{log.notes}</div></div>}</div>}</div>)}</div>
+                        </>}
+                      </>}
+                    </div>
+                  </div>
+                </div>}
               </div>
             );
           })}
