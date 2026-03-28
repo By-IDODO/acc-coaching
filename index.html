@@ -200,8 +200,8 @@ const refreshContent=async()=>{
 const defProg=()=>{const p={};COURSES.forEach(c=>c.levels.forEach(l=>l.chapters.forEach(ch=>{p[ch.id]={completed:false,quizScore:null,bestScore:null}})));return p};
 
 // ━━━ SUPABASE HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const sbSaveProg=async(uid,data)=>{await sb.from("progress").upsert({id:uid,data,updated_at:new Date().toISOString()})};
-const sbLoadProg=async(uid)=>{const{data}=await sb.from("progress").select("data").eq("id",uid).single();return data?.data||null};
+const sbSaveProg=async(uid,data)=>{try{await sb.from("progress").upsert({id:uid,data,updated_at:new Date().toISOString()})}catch(e){console.error("Save prog error:",e)}};
+const sbLoadProg=async(uid)=>{try{const{data,error}=await sb.from("progress").select("data").eq("id",uid).maybeSingle();if(error)console.warn("Load prog error:",error);return data?.data||null}catch(e){console.warn("Load prog catch:",e);return null}};
 const sbUpdateLB=async(uid,name,prog)=>{
   const all=COURSES.flatMap(c=>c.levels.flatMap(l=>l.chapters));
   const completed=all.filter(ch=>prog[ch.id]?.completed).length;const total=all.length;
@@ -525,7 +525,9 @@ function AuthScreen(){
 // ━━━ MAIN APP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function App(){
   const[user,setUser]=useState(undefined);
-  const[prog,setProg]=useState(defProg());
+  const[prog,setProg]=useState(null); // null = not loaded yet
+  const[progLoaded,setProgLoaded]=useState(false); // prevents auto-save before load
+  const[syncing,setSyncing]=useState(false);
   const[profile,setProfile]=useState(null);
   const[view,setView]=useState({page:"home"});
 
@@ -541,17 +543,37 @@ function App(){
     setProfile(p=>p?{...p,last_active:new Date().toISOString()}:p);
   },[user?.id]);
 
+  // Per-user local cache helpers
+  const cacheKey=(uid)=>"acc-prog-"+uid;
+  const saveLocalProg=(uid,data)=>{try{localStorage.setItem(cacheKey(uid),JSON.stringify(data))}catch(e){}};
+  const loadLocalProg=(uid)=>{try{const r=localStorage.getItem(cacheKey(uid));return r?JSON.parse(r):null}catch(e){return null}};
+
   useEffect(()=>{
     sb.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null)});
     const{data:{subscription}}=sb.auth.onAuthStateChange((_,session)=>{setUser(session?.user||null)});
     return()=>subscription.unsubscribe();
   },[]);
 
+  // Load progression: local cache first (instant), then Supabase (async)
   useEffect(()=>{if(!user)return;(async()=>{
-    // Load content from Supabase (courses, settings)
+    setSyncing(true);
+    // 1. Load content
     await refreshContent();
-    setContentVer(v=>v+1); // force re-render with new data
-    const saved=await sbLoadProg(user.id);if(saved)setProg(p=>({...defProg(),...saved}));
+    setContentVer(v=>v+1);
+    // 2. Restore from local cache immediately (prevents blank state)
+    const cached=loadLocalProg(user.id);
+    const base=defProg();
+    if(cached){setProg({...base,...cached})}
+    else{setProg(base)}
+    // 3. Then sync from Supabase (source of truth)
+    const remote=await sbLoadProg(user.id);
+    if(remote){
+      const merged={...base,...remote};
+      setProg(merged);
+      saveLocalProg(user.id,merged);
+    }
+    setProgLoaded(true);
+    setSyncing(false);
     const prof=await sbGetProfile(user.id);if(prof)setProfile(prof);
     touchLastActive(true);
   })()},[user,touchLastActive]);
@@ -563,14 +585,37 @@ function App(){
     return()=>document.removeEventListener("visibilitychange",onVisible);
   },[user,touchLastActive]);
 
-  // Auto-save progress
+  // Auto-save progress — ONLY after initial load is complete
   const saveRef=React.useRef(null);
-  useEffect(()=>{if(!user)return;clearTimeout(saveRef.current);saveRef.current=setTimeout(()=>{
-    sbSaveProg(user.id,prog);
-    const displayName=profile?.display_name||user.user_metadata?.display_name||user.email?.split("@")[0]||"Driver";
-    sbUpdateLB(user.id,displayName,prog);
-    touchLastActive();
-  },1000);return()=>clearTimeout(saveRef.current)},[prog,user,profile,touchLastActive]);
+  useEffect(()=>{
+    if(!user||!progLoaded||!prog)return;
+    clearTimeout(saveRef.current);
+    saveRef.current=setTimeout(()=>{
+      // Save to local cache (instant backup)
+      saveLocalProg(user.id,prog);
+      // Save to Supabase
+      sbSaveProg(user.id,prog);
+      const displayName=profile?.display_name||user.user_metadata?.display_name||user.email?.split("@")[0]||"Driver";
+      sbUpdateLB(user.id,displayName,prog);
+      touchLastActive();
+    },1500);
+    return()=>clearTimeout(saveRef.current);
+  },[prog,user,profile,progLoaded,touchLastActive]);
+
+  // Save on tab close / background
+  useEffect(()=>{
+    if(!user||!progLoaded||!prog)return;
+    const doSave=()=>{
+      saveLocalProg(user.id,prog);
+      // Also push to Supabase (fire-and-forget)
+      sbSaveProg(user.id,prog);
+    };
+    const onHide=()=>{if(document.visibilityState==="hidden")doSave()};
+    const onUnload=()=>doSave();
+    document.addEventListener("visibilitychange",onHide);
+    window.addEventListener("beforeunload",onUnload);
+    return()=>{document.removeEventListener("visibilitychange",onHide);window.removeEventListener("beforeunload",onUnload)};
+  },[user,prog,progLoaded]);
 
   const upd=(cid,data)=>{setProg(p=>{const ex=p[cid]||{};const nb=data.quizScore!=null?Math.max(data.quizScore,ex.bestScore||0):ex.bestScore;return{...p,[cid]:{...ex,...data,bestScore:nb}}})};
   const stats=()=>{const a=COURSES.flatMap(c=>c.levels.flatMap(l=>l.chapters));const d=a.filter(ch=>prog[ch.id]?.completed).length;const t=a.length;const av=a.reduce((s,ch)=>s+(prog[ch.id]?.bestScore||0),0)/Math.max(d,1);return{completed:d,total:t,avgScore:av,percent:Math.round((d/t)*100)}};
@@ -579,6 +624,7 @@ function App(){
 
   if(user===undefined)return<div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🏁</div><div style={{color:"#e2e2e2",fontSize:18,letterSpacing:4}}>LOADING...</div></div></div>;
   if(!user)return<AuthScreen/>;
+  if(!prog)return<div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{textAlign:"center"}}><div style={{fontSize:48,marginBottom:16}}>🏁</div><div style={{color:"#e2e2e2",fontSize:16,letterSpacing:3}}>Loading your progress...</div></div></div>;
 
   const ap=view.page==="course"||view.page==="lesson"?"home":view.page==="quizplay"?"quiz":view.page;
   return(<div style={S.app}>
