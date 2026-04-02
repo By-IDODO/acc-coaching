@@ -619,7 +619,40 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
   const totalCh = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
   const totalQ = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
 
-  const normalizeLabel = (value='') => String(value).trim().toLowerCase();
+  const normalizeLabel = (value='') => String(value)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+  const slugLabel = (value='') => normalizeLabel(value).replace(/[^a-z0-9]+/g, ' ').trim();
+  const getCourseAliases = (course={}) => {
+    const base = new Set([
+      normalizeLabel(course.title || ''),
+      normalizeLabel(course.id || ''),
+      slugLabel(course.title || ''),
+      slugLabel(course.id || '')
+    ].filter(Boolean));
+    const title = slugLabel(course.title || '');
+    const courseId = slugLabel(course.id || '');
+    if (title === 'driving' || title === 'pure driving' || courseId === 'pilotage') {
+      ['driving','pure driving','pilotage'].forEach(v => base.add(v));
+    }
+    if (title === 'racecraft' || courseId === 'racecraft') {
+      ['racecraft'].forEach(v => base.add(v));
+    }
+    if (title === 'car setup' || title === 'setup' || courseId === 'setup') {
+      ['car setup','setup'].forEach(v => base.add(v));
+    }
+    return [...base];
+  };
+  const findCourseByTarget = (list, rawTarget='') => {
+    const target = slugLabel(rawTarget);
+    if (!target) return null;
+    return list.find(course => {
+      const aliases = getCourseAliases(course);
+      return aliases.some(alias => alias === target || alias.includes(target) || target.includes(alias));
+    }) || null;
+  };
   const sanitizeChapter = (chapter={}) => ({
     id: String(chapter.id || uid()),
     title: String(chapter.title || 'Nouveau chapitre'),
@@ -671,9 +704,13 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
         updateCourses(d => {
           packs.forEach(pack => {
             const [courseTitleRaw='', levelTitleRaw=''] = String(pack.target || '').split('>').map(part => part.trim());
-            const course = d.find(item => normalizeLabel(item.title) === normalizeLabel(courseTitleRaw));
+            const course = findCourseByTarget(d, courseTitleRaw);
             if (!course) { targetMissCount += pack.chapters.length || 0; return; }
-            const level = (course.levels || []).find(item => normalizeLabel(item.level) === normalizeLabel(levelTitleRaw));
+            const level = (course.levels || []).find(item => {
+              const levelLabel = slugLabel(item.level || '');
+              const targetLevel = slugLabel(levelTitleRaw);
+              return levelLabel === targetLevel || levelLabel.includes(targetLevel) || targetLevel.includes(levelLabel);
+            });
             if (!level) { targetMissCount += pack.chapters.length || 0; return; }
 
             const existingIds = new Set((level.chapters || []).map(ch => String(ch.id || '')));
