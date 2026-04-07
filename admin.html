@@ -139,7 +139,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const ADMIN_EMAILS = ["dorian.castelli29@gmail.com", "info@xboxcommunityleague.com"];
 
 
-const ACC_TRACKS=["Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
+const ACC_TRACKS=["Barcelona","Brands Hatch","Track of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
 const parseLapTimeToSeconds=(value)=>{
   if(value==null)return null;
   const raw=String(value).trim().replace(/,/g,'.');
@@ -162,25 +162,25 @@ const formatLapSeconds=(seconds)=>{
   return `${mins}:${secs.toFixed(3).padStart(6,'0')}`;
 };
 const ADMIN_DEVELOPMENT_METRICS=[
-  {value:'lap_time',label:'Chrono / best lap'},
-  {value:'starting_position',label:'Position de départ'},
+  {value:'lap_time',label:'Lap time / best lap'},
+  {value:'starting_position',label:'Starting position'},
   {value:'finishing_position',label:'Position d’arrivée'},
-  {value:'crash_count',label:'Nombre de crashs'},
-  {value:'crash_rate',label:'Répartition crash / clean'}
+  {value:'crash_count',label:'Crash count'},
+  {value:'crash_rate',label:'Crash / clean split'}
 ];
 const getAdminDevelopmentMetricMeta=(metric)=>{
   switch(metric){
     case 'starting_position':
-      return {title:'Évolution des positions de départ',empty:'Aucune donnée de position de départ pour ce circuit.',statLabel:'Meilleur départ',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Départ P${point.rawValue}`};
+      return {title:'Starting position evolution',empty:'No starting position data for this track.',statLabel:'Best start',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Start P${point.rawValue}`};
     case 'finishing_position':
-      return {title:'Évolution des positions d’arrivée',empty:'Aucune donnée de position d’arrivée pour ce circuit.',statLabel:'Meilleure arrivée',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Arrivée P${point.rawValue}`};
+      return {title:'Finishing position evolution',empty:'No finishing position data for this track.',statLabel:'Best finish',format:v=>v!=null?`P${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · Finish P${point.rawValue}`};
     case 'crash_count':
-      return {title:'Évolution du nombre de crashs',empty:'Aucune donnée de crash pour ce circuit.',statLabel:'Pic de crashs',format:v=>v!=null?`${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash${Math.round(point.rawValue)===1?'':'s'}`};
+      return {title:'Crash count evolution',empty:'No crash data for this track.',statLabel:'Peak crashes',format:v=>v!=null?`${Math.round(v)}`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash${Math.round(point.rawValue)===1?'':'s'}`};
     case 'crash_rate':
-      return {title:'Répartition sessions clean / crash',empty:'Aucune donnée de crash pour ce circuit.',statLabel:'Taux de crash',format:v=>v!=null?`${Math.round(v)}%`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} session avec crash`};
+      return {title:'Clean vs crash sessions',empty:'No crash data for this track.',statLabel:'Crash rate',format:v=>v!=null?`${Math.round(v)}%`:'—',tooltip:point=>`${point.dateLabel} · ${Math.round(point.rawValue)} crash session`};
     case 'lap_time':
     default:
-      return {title:'Courbe des meilleurs tours',empty:'Aucune donnée de chrono pour ce circuit.',statLabel:'Best',format:v=>formatLapSeconds(v),tooltip:point=>`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.rawValue)}`};
+      return {title:'Best lap curve',empty:'No lap time data for this track.',statLabel:'Best',format:v=>formatLapSeconds(v),tooltip:point=>`${point.dateLabel} · ${point.best_lap||formatLapSeconds(point.rawValue)}`};
   }
 };
 const buildTrackMetricSeries=(items,track,metric='lap_time')=>{const base=((items||[])
@@ -188,7 +188,7 @@ const buildTrackMetricSeries=(items,track,metric='lap_time')=>{const base=((item
   .map(item=>({
     ...item,
     sortDate:new Date(`${item.session_date||'1970-01-01'}T12:00:00`).getTime(),
-    dateLabel:item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'Sans date'
+    dateLabel:item.session_date?new Date(`${item.session_date}T12:00:00`).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}):'No date'
   }))
   .sort((a,b)=>a.sortDate-b.sortDate));
   if(metric==='crash_rate'){
@@ -224,7 +224,7 @@ function AdminDevelopmentMetricChart({points,title,metric='lap_time'}){
       <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
         <div><div style={{fontSize:14,fontWeight:700,color:'var(--text1)'}}>{title||meta.title}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{total} session{total>1?'s':''}</div></div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#241617',border:'1px solid #462023',color:'#fca5a5'}}>Avec crash {Math.round(crashPct)}%</span>
+          <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#241617',border:'1px solid #462023',color:'#fca5a5'}}>With crash {Math.round(crashPct)}%</span>
           <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'#132018',border:'1px solid #214430',color:'#8ee7a8'}}>Clean {Math.round(cleanPct)}%</span>
         </div>
       </div>
@@ -250,20 +250,20 @@ function AdminDevelopmentMetricChart({points,title,metric='lap_time'}){
         </div>
         <div style={{display:'grid',gap:10}}>
           <div style={{padding:'12px 14px',borderRadius:12,background:'var(--surface2)',border:'1px solid var(--border)'}}>
-            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Sessions avec crash</div>
+            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Crash sessions</div>
             <div style={{fontSize:24,fontWeight:800,color:'#fca5a5'}}>{crashSessions}</div>
           </div>
           <div style={{padding:'12px 14px',borderRadius:12,background:'var(--surface2)',border:'1px solid var(--border)'}}>
-            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Sessions clean</div>
+            <div style={{fontSize:11,color:'var(--text3)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>Clean sessions</div>
             <div style={{fontSize:24,fontWeight:800,color:'#8ee7a8'}}>{cleanSessions}</div>
           </div>
-          <div style={{fontSize:12,color:'var(--text3)',lineHeight:1.65}}>Vue synthétique du circuit sélectionné : sessions clean contre sessions avec au moins un crash loggé.</div>
+          <div style={{fontSize:12,color:'var(--text3)',lineHeight:1.65}}>Overview of selected track: clean sessions vs sessions with at least one logged crash.</div>
         </div>
       </div>
     </div>;
   }
 
-  if(points.length===1)return <div style={{padding:16,border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)'}}><div style={{fontSize:13,color:'var(--text2)',marginBottom:6}}>{title||meta.title}</div><div style={{fontSize:24,fontWeight:800,color:'var(--text1)'}}>{meta.format(points[0].rawValue)}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>Une seule session enregistrée le {points[0].dateLabel}.</div></div>;
+  if(points.length===1)return <div style={{padding:16,border:'1px solid var(--border)',borderRadius:12,background:'var(--bg)'}}><div style={{fontSize:13,color:'var(--text2)',marginBottom:6}}>{title||meta.title}</div><div style={{fontSize:24,fontWeight:800,color:'var(--text1)'}}>{meta.format(points[0].rawValue)}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:4}}>Only one session recorded on {points[0].dateLabel}.</div></div>;
   const width=100,height=58,pad={left:8,right:4,top:6,bottom:12};
   const values=points.map(p=>p.value);
   const min=Math.min(...values),max=Math.max(...values);
@@ -287,7 +287,7 @@ function AdminDevelopmentMetricChart({points,title,metric='lap_time'}){
       <div><div style={{fontSize:14,fontWeight:700,color:'var(--text1)'}}>{title||meta.title}</div><div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{points.length} session{points.length>1?'s':''}</div></div>
       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
         <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:'var(--surface3)',border:'1px solid var(--border)',color:'var(--text2)'}}>{meta.statLabel} {meta.format(statValue)}</span>
-        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Progression':'Régression'} {metric==='lap_time'?`${Math.abs(delta).toFixed(3)}s`:Math.abs(delta).toFixed(0)}</span>
+        <span style={{fontSize:11,padding:'6px 10px',borderRadius:999,background:delta<=0?'#16331f':'#341919',border:`1px solid ${delta<=0?'#1f7a3b55':'#7f1d1d55'}`,color:delta<=0?'#4ade80':'#fb7185'}}>{delta<=0?'Progress':'Regression'} {metric==='lap_time'?`${Math.abs(delta).toFixed(3)}s`:Math.abs(delta).toFixed(0)}</span>
       </div>
     </div>
     <svg viewBox={`0 0 ${width} ${height}`} style={{width:'100%',height:220,display:'block'}} preserveAspectRatio='none'>
@@ -335,14 +335,14 @@ const DEFAULT_COURSES=[
 {id:"r-e-1",title:"Complete Race Strategy",desc:"Manage your race from start to finish like a pro.",videoUrl:"",content:["Races are won through strategy, management, and patience. A strategic driver beats a faster driver regularly.","**Fuel management**: Every liter adds ~0.03s per lap. Over 20 laps with 50kg extra fuel, you lose almost a second per lap. Calculate: laps × consumption/lap + 1 lap margin.","**Pit timing**: Early pitting = fresh tires in traffic. Late pitting = clear air but worn tires at end. Generally the middle third of the race is the optimal window.","**Gap management**: Monitor gaps ahead AND behind. Car behind closing at 0.3s/lap = on your tail in 10 laps. Prepare your defense. Car ahead pulling away = reassess your pace.","**Tire conservation vs pace**: First third of stint = build a gap or close. Middle third = maintain tires. Final third = attack with remaining grip or defend. This ebb and flow is what makes great racers.","**Final laps**: Where races are won and lost. Body is tired, concentration waning. Stay in your bubble — focus on braking points, apexes, exits. If your position is secure, zero unnecessary risks."],quiz:[{question:"How to calculate fuel?",options:["Always fill up","Laps × consumption + 1 margin","Half tank","Remaining laps only"],correct:1},{question:"Advantage of early pitting?",options:["Fresh tires for longer","Less pit time","Avoid traffic","Cheaper fuel"],correct:0},{question:"Final laps while leading?",options:["Push maximum","Stay focused, zero risks","Deliberately slow","Let them close"],correct:1}]}
 ]}
 ]},
-{id:"tracks",title:"Track Guides",icon:"🗺️",desc:"Circuit breakdowns with braking points, key corners and strategies",levels:[
+{id:"tracks",title:"Track Guides",icon:"🗺️",desc:"Track breakdowns with braking points, key corners and strategies",levels:[
 {level:"Beginner",color:"#22c55e",chapters:[
-{id:"t-d-1",title:"Monza — The Temple of Speed",desc:"Master the iconic high-speed Italian circuit.",videoUrl:"",content:["Monza is the perfect learning circuit. Long straights and heavy braking zones teach discipline and reward straight-line speed.","**Turn 1 (Variante del Rettifilo)**: Brake at 150m board, slightly left of center. Turn-in right, clip first apex gently, switch left for second apex. Don't overdrive — clean exit beats aggressive entry. This is where 50% of online incidents happen.","**Curva Grande**: Fast right-hander, almost flat in qualifying. Slight lift in race conditions with fuel. Hug left on entry, flow to the right apex. Smooth inputs mandatory at 230+ km/h.","**Second chicane (Variante della Roggia)**: Brake at 100m. Tighter than T1, easy to overshoot. Inside kerbs are aggressive — ride too hard = track limit penalty.","**Lesmo 1 & 2**: Two medium-speed right-handers rewarding precision. Lesmo 1: brake at 100m, late apex, let car run wide. Lesmo 2: brake earlier, tight exit to set up Ascari.","**Ascari chicane**: Fast left-right. Brake at 50m. Straighten the chicane as much as possible — minimize steering input by making both direction changes feel like one smooth S-curve.","**Parabolica**: Final corner. Brake at 100m, turn in at kerb start, focus on exit speed. A good Parabolica exit gains 0.3s on the following straight."],quiz:[{question:"At Monza T1, what's the priority?",options:["Maximum entry speed","A clean chicane exit","Aggressive kerb riding","Braking as late as possible"],correct:1},{question:"Braking reference for Ascari?",options:["200m board","150m board","100m board","50m board"],correct:3},{question:"Why is the Parabolica exit important?",options:["It leads to the longest straight","Track is wider there","DRS zone after it","It's the hardest corner"],correct:0}]},
+{id:"t-d-1",title:"Monza — The Temple of Speed",desc:"Master the iconic high-speed Italian circuit.",videoUrl:"",content:["Monza is the perfect learning circuit. Long straights and heavy braking zones teach discipline and reward straight-line speed.","**Turn 1 (Variante del Rettifilo)**: Brake at 150m board, slightly left of center. Turn-in right, clip first apex gently, switch left for second apex. Don't overdrive — clean exit beats aggressive entry. This is where 50% of online incidents happen.","**Curva Largee**: Fast right-hander, almost flat in qualifying. Slight lift in race conditions with fuel. Hug left on entry, flow to the right apex. Smooth inputs mandatory at 230+ km/h.","**Second chicane (Variante della Roggia)**: Brake at 100m. Tighter than T1, easy to overshoot. Inside kerbs are aggressive — ride too hard = track limit penalty.","**Lesmo 1 & 2**: Two medium-speed right-handers rewarding precision. Lesmo 1: brake at 100m, late apex, let car run wide. Lesmo 2: brake earlier, tight exit to set up Ascari.","**Ascari chicane**: Fast left-right. Brake at 50m. Straighten the chicane as much as possible — minimize steering input by making both direction changes feel like one smooth S-curve.","**Parabolica**: Final corner. Brake at 100m, turn in at kerb start, focus on exit speed. A good Parabolica exit gains 0.3s on the following straight."],quiz:[{question:"At Monza T1, what's the priority?",options:["Maximum entry speed","A clean chicane exit","Aggressive kerb riding","Braking as late as possible"],correct:1},{question:"Braking reference for Ascari?",options:["200m board","150m board","100m board","50m board"],correct:3},{question:"Why is the Parabolica exit important?",options:["It leads to the longest straight","Track is wider there","DRS zone after it","It's the hardest corner"],correct:0}]},
 {id:"t-d-2",title:"Spa-Francorchamps — The Ultimate Test",desc:"Conquer the legendary 7km Belgian circuit.",videoUrl:"",content:["Spa is the ultimate driver's circuit. 7km with massive elevation changes, testing every aspect of your driving.","**La Source**: Tight hairpin right. Brake at 50m, turn in late, focus on exit speed — the Kemmel Straight follows. Bad exit costs you all the way up the hill.","**Eau Rouge / Raidillon**: The most famous complex in racing. Typically flat in qualifying, may require a lift in race with worn tires. The key: commit fully or lift early. Hesitating mid-corner at 260 km/h = guaranteed crash.","**Les Combes**: Chicane at hilltop. Brake at 100m. Prime overtaking spot. Exit is crucial for the run down through Malmedy.","**Pouhon**: Double-apex left-hander. Enter from right, clip first apex, drift mid-corner, tighten for second apex. Nearly flat with good tires. Smooth steering mandatory.","**Blanchimont**: Flat-out left kink at 270+ km/h. Any instability = wall. Position right, gentle steering, full width on exit. In rain, terrifying and demands total commitment.","**Bus Stop chicane**: Final chicane. Brake at 100m. Most technically demanding corner at Spa. Balance aggressive entry with perfect exit onto the pit straight."],quiz:[{question:"Key to Eau Rouge/Raidillon?",options:["Always brake","Commit fully or lift early — never hesitate","Take it slowly","Always flat out"],correct:1},{question:"Why is La Source exit critical?",options:["Leads to Kemmel Straight","It's a tight hairpin","Kerbs are dangerous","It's the first corner"],correct:0},{question:"What makes Pouhon special?",options:["Fastest corner","Double-apex, nearly flat with good tires","Easy overtaking spot","Always 2nd gear"],correct:1}]}
 ]},
 {level:"Intermediate",color:"#f59e0b",chapters:[
 {id:"t-i-1",title:"Brands Hatch — Short but Intense",desc:"Master the narrow, punishing British circuit.",videoUrl:"",content:["Brands Hatch is short but arguably the most intense circuit on the calendar. Narrow, fast, undulating, incredibly punishing.","**Paddock Hill Bend**: Brake over the crest — car gets light as track drops away sharply. Brake at 100m, turn in as track flattens, late apex, power on as track rises on exit.","**Druids**: Tight hairpin at hilltop. Brake at 50m. Don't carry too much speed — corner tightens on exit. Common mistake: turning in too early, going wide on exit.","**Graham Hill Bend**: Medium-speed right, track drops downhill through entry. Smooth is essential. Carry speed through apex, full width on exit.","**Stirlings & Clark Curve**: Fast section through trees. Stirlings is double-apex, almost flat with good tires. Clark Curve sweeps left into Clearways.","**Clearways**: Final corner before the long pit straight. Exit speed here defines straight-line performance. Turn in from right, clip apex mid-corner, every inch of track on exit.","**General tips**: Track is narrow — side-by-side racing is risky. Use slipstream on the main straight for overtakes. Everywhere else, patience is king."],quiz:[{question:"Challenge at Paddock Hill Bend?",options:["It's very slow","You brake over a crest with the track dropping away","Kerbs are dangerous","Hard to see apex"],correct:1},{question:"Why is Clearways important?",options:["Tightest corner","Exit speed carries onto the long pit straight","Easiest to overtake","Track is widest"],correct:1},{question:"Overtaking advice at Brands Hatch?",options:["Overtake everywhere","Use slipstream on main straight, patience elsewhere","Only at Druids","Never overtake"],correct:1}]},
-{id:"t-i-2",title:"Misano — The Racecraft Circuit",desc:"A technical track where racecraft matters most.",videoUrl:"",content:["Misano is tight and technical. Racecraft matters more than outright speed here.","**Sector 1**: The opening right-left combination in 3rd gear. Rhythm is everything — smooth inputs, good exit from Turn 2 for the run to Turn 4.","**Turn 4 (Quercia)**: Fast left-hander, slightly downhill entry adds speed and reduces front grip. Brake at 100m in a straight line. A small lift before turn-in helps stability in race trim.","**The hairpins (T8, T10, T14)**: Define Misano. Brake hard, trail brake to rotate, late apex, focus on traction. These are the primary overtaking zones.","**Turn 11 (Carro)**: Downhill right-left, blind over a crest. Brake just before the track drops, commit to the direction change. Half-hearted inputs = running wide.","**Turn 16 (final corner)**: THE corner at Misano. Right-hand hairpin onto the main straight. Exit speed here defines your ability to attack or defend into Turn 1. Use every bit of exit kerb.","**Racecraft at Misano**: Narrow = defensive positioning is very effective. If defending, cover inside at hairpins. If attacking, be patient — the defender will make a mistake. Consistency wins at Misano."],quiz:[{question:"What defines fast lap times at Misano?",options:["Top speed","Exit speed from the hairpins","Aggressive kerb riding","Late braking everywhere"],correct:1},{question:"Most important corner at Misano?",options:["Turn 1","Turn 4","Turn 11","Turn 16 (final corner)"],correct:3},{question:"Racecraft key at Misano?",options:["Constant attacking","Patience and waiting for mistakes","Only slipstream","Push 100% every lap"],correct:1}]}
+{id:"t-i-2",title:"Misano — The Racecraft Track",desc:"A technical track where racecraft matters most.",videoUrl:"",content:["Misano is tight and technical. Racecraft matters more than outright speed here.","**Sector 1**: The opening right-left combination in 3rd gear. Rhythm is everything — smooth inputs, good exit from Turn 2 for the run to Turn 4.","**Turn 4 (Quercia)**: Fast left-hander, slightly downhill entry adds speed and reduces front grip. Brake at 100m in a straight line. A small lift before turn-in helps stability in race trim.","**The hairpins (T8, T10, T14)**: Define Misano. Brake hard, trail brake to rotate, late apex, focus on traction. These are the primary overtaking zones.","**Turn 11 (Carro)**: Downhill right-left, blind over a crest. Brake just before the track drops, commit to the direction change. Half-hearted inputs = running wide.","**Turn 16 (final corner)**: THE corner at Misano. Right-hand hairpin onto the main straight. Exit speed here defines your ability to attack or defend into Turn 1. Use every bit of exit kerb.","**Racecraft at Misano**: Narrow = defensive positioning is very effective. If defending, cover inside at hairpins. If attacking, be patient — the defender will make a mistake. Consistency wins at Misano."],quiz:[{question:"What defines fast lap times at Misano?",options:["Top speed","Exit speed from the hairpins","Aggressive kerb riding","Late braking everywhere"],correct:1},{question:"Most important corner at Misano?",options:["Turn 1","Turn 4","Turn 11","Turn 16 (final corner)"],correct:3},{question:"Racecraft key at Misano?",options:["Constant attacking","Patience and waiting for mistakes","Only slipstream","Push 100% every lap"],correct:1}]}
 ]},
 {level:"Expert",color:"#ef4444",chapters:[
 {id:"t-e-1",title:"Bathurst — Mount Panorama",desc:"The most dangerous and rewarding circuit in ACC.",videoUrl:"",content:["Mount Panorama is a legend. 6.2km carved into a mountain with blind crests, concrete walls, and elevation changes that take your breath away.","**The Chase (T1-T2)**: Fast downhill left-right. Brake at 150m for T1, carry speed through, set up for tight T2. Exit of T2 is critical — leads to the mountain climb.","**Mountain Straight to Griffins**: Road climbs steeply. Griffins Bend is a fast left-right with camber changes. Slight lift before entry, smooth through direction change, power up the hill. Walls are close.","**The Cutting to Reid Park**: Narrow bends with concrete walls on both sides. NOT a place for heroic driving. Learn the rhythm: left, right, right, left. Hit any wall = race over.","**Skyline and The Esses**: Top of the mountain. Fast direction changes with zero runoff. Track drops on the right, walls on the left. Commit to your line, be smooth, trust the car.","**Conrod Straight**: Fastest section — 290+ km/h down the mountain. Brake at 200m progressively. Track compression at the bottom loads the car — use this grip to rotate.","**The golden rule**: Consistency beats speed at Bathurst. Margins are razor-thin. Build speed gradually over many laps. Never push beyond 95% until you know the track intimately. One mistake = race over. Ten clean laps = a result to be proud of."],quiz:[{question:"Most important mindset at Bathurst?",options:["Maximum attack from lap 1","Consistency, building speed gradually","Ignore the walls","Push 100% every corner"],correct:1},{question:"Key challenge of The Cutting?",options:["Very fast","Narrow with concrete walls both sides","Always wet","Bumpy surface"],correct:1},{question:"Conrod Straight braking?",options:["As late as possible","Skip braking","Brake at 200m, progressively","Brake at 50m"],correct:2}]}
@@ -426,7 +426,7 @@ function AdminApp() {
     try {
       const { data: { user }, error: userError } = await sb.auth.getUser();
       if (userError || !user || !ADMIN_EMAILS.includes(user.email)) {
-        showToast("Session admin invalide — reconnectez-vous", "error");
+        showToast("Invalid admin session — please sign in again", "error");
         return;
       }
       const r1 = await sbSaveContent("courses", courses);
@@ -434,13 +434,13 @@ function AdminApp() {
       const r2 = await sbSaveContent("settings", settings);
       if (r1 && r2) {
         setHasChanges(false);
-        showToast("Sauvegardé et synchronisé !");
+        showToast("Saved and synced!");
       } else {
-        showToast("Sauvegardé en local, mais synchro cloud échouée", "error");
+        showToast("Saved locally, but cloud sync failed", "error");
       }
     } catch(e) {
       console.error("Save error:", e);
-      showToast("Sauvegardé en local, mais erreur cloud", "error");
+      showToast("Saved locally, but cloud error", "error");
     } finally {
       setIsSaving(false);
     }
@@ -475,17 +475,17 @@ function AdminApp() {
   }
 
   // Auth gate: must be logged in with admin email
-  if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Chargement...</div></div></div>;
+  if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Loading...</div></div></div>;
   if (authUser === null || !ADMIN_EMAILS.includes(authUser.email)) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif",padding:20}}>
       <div style={{maxWidth:380,width:"100%"}}>
-        <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔒</div><div style={{fontSize:20,fontWeight:700}}>Admin Panel</div><div style={{fontSize:12,color:"#9294a0",marginTop:4}}>Connexion requise — accès réservé à l'administrateur</div></div>
+        <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔒</div><div style={{fontSize:20,fontWeight:700}}>Admin Panel</div><div style={{fontSize:12,color:"#9294a0",marginTop:4}}>Login required — admin access only</div></div>
         <div style={{background:"#16171c",border:"1px solid #2a2b33",borderRadius:12,padding:24}}>
           {loginErr && <div style={{color:"#ef4444",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#ef444415",borderRadius:6}}>{loginErr}</div>}
-          {authUser && !ADMIN_EMAILS.includes(authUser.email) && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} n'est pas autorisé. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Se déconnecter</button></div>}
-          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:10}} type="email" placeholder="Email admin" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/>
-          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:12}} type="password" placeholder="Mot de passe" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
-          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={doLogin}>Se connecter</button>
+          {authUser && !ADMIN_EMAILS.includes(authUser.email) && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} is not authorized. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Sign out</button></div>}
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:10}} type="email" placeholder="Admin email" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/>
+          <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:12}} type="password" placeholder="Password" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
+          <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={doLogin}>Sign in</button>
         </div>
       </div>
     </div>
@@ -497,7 +497,7 @@ function AdminApp() {
       <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo"><span>⚙️</span><span>ACC Admin</span></div>
-          <div className="sidebar-sub">Gestion du contenu</div>
+          <div className="sidebar-sub">Content management</div>
         </div>
         <div className="sidebar-nav">
           <div className="nav-section">
@@ -506,20 +506,20 @@ function AdminApp() {
               <span className="nav-icon">📊</span> Dashboard
             </button>
             <button className={`nav-item ${selected.type==="users"?"active":""}`} onClick={()=>nav({type:"users"})}>
-              <span className="nav-icon">👥</span> Utilisateurs
+              <span className="nav-icon">👥</span> Users
             </button>
             <button className={`nav-item ${selected.type==="coaching"?"active":""}`} onClick={()=>nav({type:"coaching"})}>
-              <span className="nav-icon">🎯</span> Page Coaching
+              <span className="nav-icon">🎯</span> Coaching Page
             </button>
             <button className={`nav-item ${selected.type==="homeLayout"?"active":""}`} onClick={()=>nav({type:"homeLayout"})}>
-              <span className="nav-icon">🏠</span> Layout Accueil
+              <span className="nav-icon">🏠</span> Home Layout
             </button>
           </div>
           {courses.map((course, ci) => (
             <div key={course.id} className="nav-section">
               <div className="nav-section-title">{course.icon} {course.title}</div>
               <button className={`nav-item ${selected.type==="course"&&selected.ci===ci?"active":""}`} onClick={()=>nav({type:"course",ci})}>
-                <span className="nav-icon">📝</span> Infos du parcours
+                <span className="nav-icon">📝</span> Course settings
               </button>
               {course.levels.map((level, li) => (
                 <div key={li}>
@@ -532,12 +532,12 @@ function AdminApp() {
                   ))}
                   <button className="nav-item" style={{color:"var(--accent)",fontSize:12}} onClick={() => {
                     updateCourses(d => {
-                      d[ci].levels[li].chapters.push({ id:uid(), title:"Nouveau chapitre", desc:"Description...", videoUrl:"", content:["Contenu de la leçon..."], quiz:[] });
+                      d[ci].levels[li].chapters.push({ id:uid(), title:"New chapter", desc:"Description...", videoUrl:"", content:["Lesson content..."], quiz:[] });
                     });
                     const newChi = course.levels[li].chapters.length; // will be length after push
                     setTimeout(() => nav({type:"chapter",ci,li,chi:newChi}), 50);
                   }}>
-                    <span className="nav-icon">+</span> Ajouter chapitre
+                    <span className="nav-icon">+</span> Add chapter
                   </button>
                 </div>
               ))}
@@ -546,16 +546,16 @@ function AdminApp() {
           <div className="nav-section">
             <button className="nav-item" style={{color:"var(--accent)"}} onClick={() => {
               updateCourses(d => {
-                d.push({ id:uid(), title:"Nouveau parcours", icon:"📚", desc:"Description du parcours", levels:[{level:"Débutant",color:"#22c55e",chapters:[]}] });
+                d.push({ id:uid(), title:"New course", icon:"📚", desc:"Course description", levels:[{level:"Beginner",color:"#22c55e",chapters:[]}] });
               });
             }}>
-              <span className="nav-icon">+</span> Nouveau parcours
+              <span className="nav-icon">+</span> New course
             </button>
           </div>
         </div>
         <div className="sidebar-footer">
           <button className="btn btn-primary" style={{width:"100%",justifyContent:"center",opacity:isSaving?0.7:1,cursor:isSaving?"wait":"pointer"}} onClick={save} disabled={isSaving}>
-            {isSaving ? "⏳ Sauvegarde..." : `💾 ${hasChanges ? "Enregistrer *" : "Enregistrer"}`}
+            {isSaving ? "⏳ Saving..." : `💾 ${hasChanges ? "Save *" : "Save"}`}
           </button>
           <button className="btn btn-secondary" style={{width:"100%",justifyContent:"center"}} onClick={() => {
             const json = JSON.stringify(courses, null, 2);
@@ -563,9 +563,9 @@ function AdminApp() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a"); a.href = url; a.download = "acc-coaching-data.json"; a.click();
             URL.revokeObjectURL(url);
-            showToast("Export téléchargé !");
+            showToast("Export downloaded!");
           }}>
-            📥 Exporter JSON
+            📥 Export JSON
           </button>
         </div>
       </div>
@@ -576,24 +576,24 @@ function AdminApp() {
           <div>
             <div className="main-title">
               {selected.type === "dashboard" && "Dashboard"}
-              {selected.type === "users" && "Utilisateurs"}
-              {selected.type === "coaching" && "Page Coaching"}
-              {selected.type === "homeLayout" && "Layout Accueil"}
+              {selected.type === "users" && "Users"}
+              {selected.type === "coaching" && "Coaching Page"}
+              {selected.type === "homeLayout" && "Home Layout"}
               {selected.type === "course" && courses[selected.ci]?.title}
               {selected.type === "chapter" && courses[selected.ci]?.levels[selected.li]?.chapters[selected.chi]?.title}
             </div>
             <div className="main-subtitle">
-              {selected.type === "dashboard" && `${courses.length} parcours · ${totalChapters} chapitres · ${totalQuiz} questions`}
-              {selected.type === "users" && "Gestion des comptes et accès premium"}
-              {selected.type === "coaching" && "Modifier les textes de la page coaching"}
-              {selected.type === "homeLayout" && "Réordonner les blocs de la page d'accueil et les parcours"}
-              {selected.type === "course" && "Paramètres du parcours"}
+              {selected.type === "dashboard" && `${courses.length} courses · ${totalChapters} chapters · ${totalQuiz} questions`}
+              {selected.type === "users" && "Manage accounts and premium access"}
+              {selected.type === "coaching" && "Edit coaching page texts"}
+              {selected.type === "homeLayout" && "Reorder home page blocks and courses"}
+              {selected.type === "course" && "Course settings"}
               {selected.type === "chapter" && `${courses[selected.ci]?.title} › ${courses[selected.ci]?.levels[selected.li]?.level}`}
             </div>
           </div>
           <div className="main-actions">
-            {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Non sauvé</span>}
-            <button className="btn btn-primary" onClick={save} disabled={isSaving} style={{opacity:isSaving?0.7:1,cursor:isSaving?"wait":"pointer"}}>{isSaving?"⏳ Sauvegarde...":"💾 Sauvegarder"}</button>
+            {hasChanges && <span style={{fontSize:12,color:"var(--yellow)"}}>● Unsaved</span>}
+            <button className="btn btn-primary" onClick={save} disabled={isSaving} style={{opacity:isSaving?0.7:1,cursor:isSaving?"wait":"pointer"}}>{isSaving?"⏳ Saving...":"💾 Save"}</button>
           </div>
         </div>
         <div className="main-content">
@@ -628,8 +628,8 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
           updateCourses(() => {}); // trigger change
           localStorage.setItem("acc-coaching-courses", JSON.stringify(data));
           window.location.reload();
-        } else { showToast("Format JSON invalide", "error"); }
-      } catch { showToast("Erreur de lecture JSON", "error"); }
+        } else { showToast("Invalid JSON format", "error"); }
+      } catch { showToast("JSON read error", "error"); }
     };
     reader.readAsText(file);
   };
@@ -637,16 +637,16 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{courses.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PARCOURS</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalCh}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>CHAPITRES</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{totalQ}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>QUESTIONS QUIZ</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{courses.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>COURSES</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalCh}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>CHAPTERS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{totalQ}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>QUIZ QUESTIONS</div></div></div>
       </div>
 
       <div className="card">
-        <div className="card-header"><div className="card-title">📚 Parcours</div>
+        <div className="card-header"><div className="card-title">📚 Courses</div>
           <button className="btn btn-sm btn-primary" onClick={() => {
-            updateCourses(d => d.push({id:uid(),title:"Nouveau parcours",icon:"📚",desc:"Description",levels:[{level:"Débutant",color:"#22c55e",chapters:[]}]}));
-          }}>+ Ajouter</button>
+            updateCourses(d => d.push({id:uid(),title:"New course",icon:"📚",desc:"Description",levels:[{level:"Beginner",color:"#22c55e",chapters:[]}]}));
+          }}>+ Add</button>
         </div>
         <div className="card-body">
           {courses.map((c, ci) => (
@@ -654,11 +654,11 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
               <span style={{fontSize:24}}>{c.icon}</span>
               <div className="item-info">
                 <div className="item-title">{c.title}</div>
-                <div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres · {c.levels.length} niveaux</div>
+                <div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapters · {c.levels.length} levels</div>
               </div>
               <div className="item-actions">
-                <button className="btn-icon" onClick={()=>nav({type:"course",ci})} title="Modifier">✏️</button>
-                <button className="btn-icon" onClick={()=>{if(confirm("Supprimer ce parcours ?"))updateCourses(d=>d.splice(ci,1))}} title="Supprimer">🗑️</button>
+                <button className="btn-icon" onClick={()=>nav({type:"course",ci})} title="Edit">✏️</button>
+                <button className="btn-icon" onClick={()=>{if(confirm("Delete this course?"))updateCourses(d=>d.splice(ci,1))}} title="Delete">🗑️</button>
               </div>
             </div>
           ))}
@@ -666,22 +666,22 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
       </div>
 
       <div className="card" style={{marginTop:16}}>
-        <div className="card-header"><div className="card-title">🔧 Outils</div></div>
+        <div className="card-header"><div className="card-title">🔧 Tools</div></div>
         <div className="card-body" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Importer JSON</button>
+          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Import JSON</button>
           <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={handleImport}/>
           <button className="btn btn-secondary" onClick={() => {
             const json = JSON.stringify(courses, null, 2);
             const blob = new Blob([json], {type:"application/json"});
             const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href=url; a.download="acc-coaching-data.json"; a.click();
-          }}>📥 Exporter JSON</button>
+          }}>📥 Export JSON</button>
           <button className="btn btn-danger" onClick={() => {
-            if (confirm("⚠️ Réinitialiser TOUT le contenu aux valeurs par défaut ? Cette action est irréversible.")) {
+            if (confirm("⚠️ Reset ALL content to defaults? This action is irreversible.")) {
               localStorage.removeItem(DATA_KEY);
               localStorage.removeItem(PROGRESS_KEY);
               window.location.reload();
             }
-          }}>🔄 Réinitialiser tout</button>
+          }}>🔄 Reset all</button>
         </div>
       </div>
     </div>
@@ -691,7 +691,7 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
 // ─── COURSE EDITOR ────────────────────────────────────────────
 function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
   const course = courses[ci];
-  if (!course) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Parcours introuvable</div></div>;
+  if (!course) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Course not found</div></div>;
 
   const ICONS = ["🏎️","⚔️","🔧","🏁","🎯","⚡","🛞","🌧️","🏆","📚","💡","🎮"];
   const COLORS = ["#22c55e","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899","#06b6d4","#f97316"];
@@ -699,10 +699,10 @@ function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
   return (
     <div>
       <div className="card">
-        <div className="card-header"><div className="card-title">Informations du parcours</div></div>
+        <div className="card-header"><div className="card-title">Informations du courses</div></div>
         <div className="card-body">
           <div className="form-group">
-            <label className="form-label">Icône</label>
+            <label className="form-label">Icon</label>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {ICONS.map(ic => (
                 <button key={ic} style={{fontSize:24,width:40,height:40,borderRadius:8,border:course.icon===ic?"2px solid var(--accent)":"1px solid var(--border)",background:course.icon===ic?"var(--accent)15":"var(--bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
@@ -711,20 +711,20 @@ function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Titre du parcours</label>
+            <label className="form-label">Titre du courses</label>
             <input className="form-input" value={course.title} onChange={e=>updateCourses(d=>{d[ci].title=e.target.value})} placeholder="Ex: Pilotage Pur"/>
           </div>
           <div className="form-group">
             <label className="form-label">Description</label>
-            <input className="form-input" value={course.desc} onChange={e=>updateCourses(d=>{d[ci].desc=e.target.value})} placeholder="Description courte du parcours"/>
+            <input className="form-input" value={course.desc} onChange={e=>updateCourses(d=>{d[ci].desc=e.target.value})} placeholder="Short description du courses"/>
           </div>
         </div>
       </div>
 
       <div className="card" style={{marginTop:16}}>
         <div className="card-header">
-          <div className="card-title">📊 Niveaux ({course.levels.length})</div>
-          <button className="btn btn-sm btn-primary" onClick={()=>updateCourses(d=>{d[ci].levels.push({level:"Nouveau niveau",color:"#3b82f6",chapters:[]})})}>+ Ajouter niveau</button>
+          <div className="card-title">📊 Levels ({course.levels.length})</div>
+          <button className="btn btn-sm btn-primary" onClick={()=>updateCourses(d=>{d[ci].levels.push({level:"New level",color:"#3b82f6",chapters:[]})})}>+ Add level</button>
         </div>
         <div className="card-body">
           {course.levels.map((level, li) => (
@@ -739,12 +739,12 @@ function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
                     ))}
                   </div>
                 </div>
-                <div className="item-sub">{level.chapters.length} chapitres</div>
+                <div className="item-sub">{level.chapters.length} chapters</div>
               </div>
               <div className="item-actions">
-                {li > 0 && <button className="btn-icon" title="Monter" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li-1];d[ci].levels[li-1]=t})}>↑</button>}
-                {li < course.levels.length-1 && <button className="btn-icon" title="Descendre" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li+1];d[ci].levels[li+1]=t})}>↓</button>}
-                <button className="btn-icon" title="Supprimer" onClick={()=>{if(confirm("Supprimer ce niveau et tous ses chapitres ?"))updateCourses(d=>{d[ci].levels.splice(li,1)})}}>🗑️</button>
+                {li > 0 && <button className="btn-icon" title="Move up" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li-1];d[ci].levels[li-1]=t})}>↑</button>}
+                {li < course.levels.length-1 && <button className="btn-icon" title="Move down" onClick={()=>updateCourses(d=>{const t=d[ci].levels[li];d[ci].levels[li]=d[ci].levels[li+1];d[ci].levels[li+1]=t})}>↓</button>}
+                <button className="btn-icon" title="Delete" onClick={()=>{if(confirm("Delete this level and all its chapters?"))updateCourses(d=>{d[ci].levels.splice(li,1)})}}>🗑️</button>
               </div>
             </div>
           ))}
@@ -752,7 +752,7 @@ function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
       </div>
 
       <div style={{marginTop:20}}>
-        <button className="btn btn-danger" onClick={()=>{if(confirm("Supprimer le parcours \""+course.title+"\" ?")) { updateCourses(d=>d.splice(ci,1)); nav({type:"dashboard"}); }}}>🗑️ Supprimer ce parcours</button>
+        <button className="btn btn-danger" onClick={()=>{if(confirm("Delete the course \""+course.title+"\" ?")) { updateCourses(d=>d.splice(ci,1)); nav({type:"dashboard"}); }}}>🗑️ Delete this course</button>
       </div>
     </div>
   );
@@ -762,20 +762,20 @@ function CourseEditor({ courses, ci, updateCourses, nav, showToast }) {
 function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
   const [tab, setTab] = useState("info");
   const chapter = courses[ci]?.levels[li]?.chapters[chi];
-  if (!chapter) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Chapitre introuvable</div></div>;
+  if (!chapter) return <div className="empty-state"><div className="empty-icon">❌</div><div className="empty-text">Chapter not found</div></div>;
 
   const update = (fn) => updateCourses(d => fn(d[ci].levels[li].chapters[chi]));
 
   return (
     <div>
       <div className="status-bar">
-        ✓ Chapitre : {chapter.content.filter(b => typeof b === "string" || (typeof b === "object" && b.type !== "image")).length} textes · {chapter.content.filter(b => typeof b === "object" && b.type === "image").length} images · {chapter.quiz.length} questions quiz · Vidéo : {chapter.videoUrl ? "✓" : "✗"}
+        ✓ Chapter: {chapter.content.filter(b => typeof b === "string" || (typeof b === "object" && b.type !== "image")).length} texts · {chapter.content.filter(b => typeof b === "object" && b.type === "image").length} images · {chapter.quiz.length} quiz questions · Video: {chapter.videoUrl ? "✓" : "✗"}
       </div>
 
       <div className="tabs">
-        <button className={`tab ${tab==="info"?"active":""}`} onClick={()=>setTab("info")}>ℹ️ Infos</button>
-        <button className={`tab ${tab==="content"?"active":""}`} onClick={()=>setTab("content")}>📖 Contenu</button>
-        <button className={`tab ${tab==="video"?"active":""}`} onClick={()=>setTab("video")}>🎬 Vidéo</button>
+        <button className={`tab ${tab==="info"?"active":""}`} onClick={()=>setTab("info")}>ℹ️ Info</button>
+        <button className={`tab ${tab==="content"?"active":""}`} onClick={()=>setTab("content")}>📖 Content</button>
+        <button className={`tab ${tab==="video"?"active":""}`} onClick={()=>setTab("video")}>🎬 Video</button>
         <button className={`tab ${tab==="quiz"?"active":""}`} onClick={()=>setTab("quiz")}>✅ Quiz ({chapter.quiz.length})</button>
         <button className={`tab ${tab==="danger"?"active":""}`} onClick={()=>setTab("danger")}>⚠️</button>
       </div>
@@ -785,15 +785,15 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
         <div className="card">
           <div className="card-body">
             <div className="form-group">
-              <label className="form-label">Titre du chapitre</label>
-              <input className="form-input" value={chapter.title} onChange={e=>update(ch=>{ch.title=e.target.value})} placeholder="Ex: Les bases du freinage"/>
+              <label className="form-label">Chapter title</label>
+              <input className="form-input" value={chapter.title} onChange={e=>update(ch=>{ch.title=e.target.value})} placeholder="e.g. Braking Fundamentals"/>
             </div>
             <div className="form-group">
-              <label className="form-label">Description courte</label>
-              <input className="form-input" value={chapter.desc} onChange={e=>update(ch=>{ch.desc=e.target.value})} placeholder="Ex: Apprends à freiner efficacement"/>
+              <label className="form-label">Short description</label>
+              <input className="form-input" value={chapter.desc} onChange={e=>update(ch=>{ch.desc=e.target.value})} placeholder="e.g. Learn to brake effectively"/>
             </div>
             <div className="form-group">
-              <label className="form-label">Identifiant unique</label>
+              <label className="form-label">Unique identifier</label>
               <input className="form-input" value={chapter.id} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:"var(--text3)"}} readOnly/>
             </div>
           </div>
@@ -803,7 +803,7 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
       {/* CONTENT TAB */}
       {tab === "content" && (
         <div>
-          <div className="para-hint">💡 **texte** = gras rouge. Types : Texte (3 tailles), Titre, Encadré, Image. Réordonne librement.</div>
+          <div className="para-hint">💡 **text** = bold red. Types: Text (3 sizes), Heading, Callout, Image. Reorder freely.</div>
           {chapter.content.map((block, pi) => {
             const bType = typeof block === "object" ? (block.type || "text") : "text";
             const isImage = bType === "image";
@@ -812,7 +812,7 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
             const isText = !isImage && !isHeading && !isCallout;
             const textVal = typeof block === "string" ? block : (block.value || "");
             const size = typeof block === "object" ? (block.size || "normal") : "normal";
-            const typeLabels = {text:"📝 Texte",heading:"🔤 Titre",callout:"💡 Encadré",image:"🖼️ Image"};
+            const typeLabels = {text:"📝 Text",heading:"🔤 Heading",callout:"💡 Callout",image:"🖼️ Image"};
             const typeColors = {text:"var(--text3)",heading:"var(--accent)",callout:"var(--yellow)",image:"var(--blue)"};
             return (
             <div key={pi} className="para-block">
@@ -820,39 +820,39 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
                 <span style={{fontSize:11,color:"var(--text3)",fontFamily:"'JetBrains Mono',monospace"}}>{pi+1}</span>
                 <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:typeColors[bType]+"22",color:typeColors[bType]}}>{typeLabels[bType]||bType}</span>
                 {isText && <select style={{fontSize:10,padding:"2px 6px",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,color:"var(--text2)"}} value={size} onChange={e=>update(ch=>{ch.content[pi]=typeof ch.content[pi]==="string"?{type:"text",value:ch.content[pi],size:e.target.value}:{...ch.content[pi],size:e.target.value}})}>
-                  <option value="small">Petit</option><option value="normal">Normal</option><option value="large">Grand</option>
+                  <option value="small">Small</option><option value="normal">Normal</option><option value="large">Large</option>
                 </select>}
                 <div style={{flex:1}}/>
-                {pi > 0 && <button className="btn-icon btn-sm" title="Monter" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi-1];ch.content[pi-1]=t})}>↑</button>}
-                {pi < chapter.content.length-1 && <button className="btn-icon btn-sm" title="Descendre" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi+1];ch.content[pi+1]=t})}>↓</button>}
-                <button className="btn-icon btn-sm" style={{color:"var(--red)"}} title="Supprimer" onClick={()=>update(ch=>{ch.content.splice(pi,1)})}>✗</button>
+                {pi > 0 && <button className="btn-icon btn-sm" title="Move up" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi-1];ch.content[pi-1]=t})}>↑</button>}
+                {pi < chapter.content.length-1 && <button className="btn-icon btn-sm" title="Move down" onClick={()=>update(ch=>{const t=ch.content[pi];ch.content[pi]=ch.content[pi+1];ch.content[pi+1]=t})}>↓</button>}
+                <button className="btn-icon btn-sm" style={{color:"var(--red)"}} title="Delete" onClick={()=>update(ch=>{ch.content.splice(pi,1)})}>✗</button>
               </div>
               {isImage ? (
                 <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:"var(--radius)",padding:12}}>
                   <div className="form-group" style={{marginBottom:8}}>
-                    <label className="form-label">URL de l'image</label>
+                    <label className="form-label">Image URL</label>
                     <input className="form-input" value={block.url||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],url:e.target.value}})} placeholder="https://example.com/image.jpg"/>
                   </div>
                   <div className="form-group" style={{marginBottom:0}}>
-                    <label className="form-label">Légende (optionnel)</label>
-                    <input className="form-input" value={block.caption||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],caption:e.target.value}})} placeholder="Description de l'image..."/>
+                    <label className="form-label">Caption (optional)</label>
+                    <input className="form-input" value={block.caption||""} onChange={e=>update(ch=>{ch.content[pi]={...ch.content[pi],caption:e.target.value}})} placeholder="Image description..."/>
                   </div>
                   {block.url && <div style={{marginTop:8,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={block.url} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}} alt={block.caption||""}/></div>}
                 </div>
               ) : isHeading ? (
-                <input className="form-input" style={{fontSize:18,fontWeight:700}} value={textVal} onChange={e=>update(ch=>{ch.content[pi]={type:"heading",value:e.target.value}})} placeholder="Titre de section..."/>
+                <input className="form-input" style={{fontSize:18,fontWeight:700}} value={textVal} onChange={e=>update(ch=>{ch.content[pi]={type:"heading",value:e.target.value}})} placeholder="Section heading..."/>
               ) : (
                 <textarea className="form-input" style={{fontSize:isCallout?13:size==="large"?16:size==="small"?12:14}} value={textVal} rows={3} onChange={e=>update(ch=>{
                   if(typeof ch.content[pi]==="string"){ch.content[pi]=isCallout?{type:"callout",value:e.target.value}:e.target.value}
                   else{ch.content[pi]={...ch.content[pi],value:e.target.value}}
-                })} placeholder={isCallout?"Texte de l'encadré...":"Contenu du paragraphe..."}/>
+                })} placeholder={isCallout?"Callout text...":"Paragraph content..."}/>
               )}
             </div>
           )})}
           <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
-            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>📝 Texte</button>
-            <button className="btn btn-secondary" style={{borderColor:"var(--accent)30",color:"var(--accent)"}} onClick={()=>update(ch=>{ch.content.push({type:"heading",value:""})})}>🔤 Titre</button>
-            <button className="btn btn-secondary" style={{borderColor:"var(--yellow)30",color:"var(--yellow)"}} onClick={()=>update(ch=>{ch.content.push({type:"callout",value:""})})}>💡 Encadré</button>
+            <button className="btn btn-secondary" onClick={()=>update(ch=>{ch.content.push("")})}>📝 Text</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--accent)30",color:"var(--accent)"}} onClick={()=>update(ch=>{ch.content.push({type:"heading",value:""})})}>🔤 Heading</button>
+            <button className="btn btn-secondary" style={{borderColor:"var(--yellow)30",color:"var(--yellow)"}} onClick={()=>update(ch=>{ch.content.push({type:"callout",value:""})})}>💡 Callout</button>
             <button className="btn btn-secondary" style={{borderColor:"var(--blue)30",color:"var(--blue)"}} onClick={()=>update(ch=>{ch.content.push({type:"image",url:"",caption:""})})}>🖼️ Image</button>
           </div>
         </div>
@@ -863,20 +863,20 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
         <div className="card">
           <div className="card-body">
             <div className="form-group">
-              <label className="form-label">URL de la vidéo YouTube (embed)</label>
+              <label className="form-label">YouTube video URL (embed)</label>
               <input className="form-input" value={chapter.videoUrl} onChange={e=>update(ch=>{ch.videoUrl=e.target.value})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
               <div className="para-hint" style={{marginTop:8}}>
-                Pour obtenir le lien embed : va sur YouTube → Partager → Intégrer → copie le lien src="https://www.youtube.com/embed/..."
+                To get the embed link: go to YouTube → Share → Embed → copy the src="https://www.youtube.com/embed/..." link
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">Source / Crédit vidéo (optionnel)</label>
+              <label className="form-label">Video source / credit (optional)</label>
               <input className="form-input" value={chapter.videoSource||""} onChange={e=>update(ch=>{ch.videoSource=e.target.value||undefined})} placeholder="Ex: Aris.Drives YouTube Channel"/>
-              <div className="para-hint" style={{marginTop:4}}>Affiché en petit sous la vidéo dans l'app</div>
+              <div className="para-hint" style={{marginTop:4}}>Shown in small text below the video in the app</div>
             </div>
             {chapter.videoUrl && (
               <div style={{marginTop:12}}>
-                <label className="form-label">Aperçu</label>
+                <label className="form-label">Preview</label>
                 <div style={{borderRadius:8,overflow:"hidden",border:"1px solid var(--border)"}}>
                   <iframe src={chapter.videoUrl} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/>
                 </div>
@@ -892,8 +892,8 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
           {chapter.quiz.length === 0 && (
             <div className="empty-state">
               <div className="empty-icon">✅</div>
-              <div className="empty-text">Aucune question</div>
-              <div className="empty-sub">Ajoute des questions pour valider ce chapitre</div>
+              <div className="empty-text">No questions</div>
+              <div className="empty-sub">Add questions to validate this chapter</div>
             </div>
           )}
           {chapter.quiz.map((q, qi) => (
@@ -912,60 +912,60 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
               <div className="card-body">
                 <div className="form-group">
                   <label className="form-label">Question</label>
-                  <input className="form-input" value={q.question} onChange={e=>update(ch=>{ch.quiz[qi].question=e.target.value})} placeholder="Pose ta question ici..."/>
+                  <input className="form-input" value={q.question} onChange={e=>update(ch=>{ch.quiz[qi].question=e.target.value})} placeholder="Type your question here..."/>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">🖼️ Image de la question (optionnel)</label>
+                  <label className="form-label">🖼️ Question image (optional)</label>
                   <input className="form-input" value={q.image||""} onChange={e=>update(ch=>{ch.quiz[qi].image=e.target.value||undefined})} placeholder="https://example.com/image.jpg"/>
                   {q.image && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={q.image} style={{width:"100%",maxHeight:150,objectFit:"cover",display:"block"}} alt=""/></div>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">🎬 Vidéo de la question (optionnel)</label>
+                  <label className="form-label">🎬 Video de la question (optionnel)</label>
                   <input className="form-input" value={q.video||""} onChange={e=>update(ch=>{ch.quiz[qi].video=e.target.value||undefined})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
-                  <div className="para-hint" style={{marginTop:4}}>Lien embed YouTube uniquement. Ex: https://www.youtube.com/embed/abc123</div>
+                  <div className="para-hint" style={{marginTop:4}}>YouTube embed link only. e.g.: https://www.youtube.com/embed/abc123</div>
                   {q.video && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><iframe src={q.video} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>}
                 </div>
-                <label className="form-label">Options (clique le cercle vert pour marquer la bonne réponse)</label>
+                <label className="form-label">Options (click the green circle to mark the correct answer)</label>
                 {q.options.map((opt, oi) => (
                   <div key={oi} className="quiz-option-row">
                     <span style={{fontSize:11,color:"var(--text3)",width:16,textAlign:"center",fontWeight:600}}>{String.fromCharCode(65+oi)}</span>
                     <input className="form-input" style={{marginBottom:0}} value={opt} onChange={e=>update(ch=>{ch.quiz[qi].options[oi]=e.target.value})} placeholder={`Option ${String.fromCharCode(65+oi)}`}/>
-                    <button className={`quiz-option-correct ${q.correct===oi?"is-correct":""}`} onClick={()=>update(ch=>{ch.quiz[qi].correct=oi})} title="Bonne réponse">✓</button>
+                    <button className={`quiz-option-correct ${q.correct===oi?"is-correct":""}`} onClick={()=>update(ch=>{ch.quiz[qi].correct=oi})} title="Correct answer">✓</button>
                     {q.options.length > 2 && <button className="btn-icon btn-sm" style={{color:"var(--red)"}} onClick={()=>update(ch=>{ch.quiz[qi].options.splice(oi,1);if(ch.quiz[qi].correct>=oi&&ch.quiz[qi].correct>0)ch.quiz[qi].correct--})}>✗</button>}
                   </div>
                 ))}
                 {q.options.length < 6 && (
-                  <button className="btn btn-ghost btn-sm" style={{marginTop:4}} onClick={()=>update(ch=>{ch.quiz[qi].options.push("")})}>+ Ajouter option</button>
+                  <button className="btn btn-ghost btn-sm" style={{marginTop:4}} onClick={()=>update(ch=>{ch.quiz[qi].options.push("")})}>+ Add option</button>
                 )}
               </div>
             </div>
           ))}
-          <button className="btn btn-primary" style={{marginTop:8}} onClick={()=>update(ch=>{ch.quiz.push({question:"",options:["","","",""],correct:0})})}>+ Ajouter une question</button>
+          <button className="btn btn-primary" style={{marginTop:8}} onClick={()=>update(ch=>{ch.quiz.push({question:"",options:["","","",""],correct:0})})}>+ Add question</button>
         </div>
       )}
 
       {/* DANGER TAB */}
       {tab === "danger" && (
         <div className="card">
-          <div className="card-header"><div className="card-title" style={{color:"var(--red)"}}>⚠️ Zone de danger</div></div>
+          <div className="card-header"><div className="card-title" style={{color:"var(--red)"}}>⚠️ Danger zone</div></div>
           <div className="card-body">
-            <p style={{fontSize:13,color:"var(--text2)",marginBottom:16}}>Ces actions sont irréversibles. Fais attention !</p>
+            <p style={{fontSize:13,color:"var(--text2)",marginBottom:16}}>These actions are irreversible. Be careful!</p>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               <button className="btn btn-danger" onClick={() => {
-                if (confirm("Supprimer le chapitre \""+chapter.title+"\" ?\nCette action est irréversible.")) {
+                if (confirm("Delete chapter \""+chapter.title+"\" ?\nThis action is irreversible.")) {
                   updateCourses(d => { d[ci].levels[li].chapters.splice(chi, 1); });
-                  showToast("Chapitre supprimé");
+                  showToast("Chapter deleted");
                 }
-              }}>🗑️ Supprimer ce chapitre</button>
+              }}>🗑️ Delete this chapter</button>
               <button className="btn btn-secondary" onClick={() => {
                 updateCourses(d => {
                   const copy = JSON.parse(JSON.stringify(chapter));
                   copy.id = uid();
-                  copy.title = copy.title + " (copie)";
+                  copy.title = copy.title + " (copy)";
                   d[ci].levels[li].chapters.splice(chi+1, 0, copy);
                 });
-                showToast("Chapitre dupliqué !");
-              }}>📋 Dupliquer ce chapitre</button>
+                showToast("Chapter duplicated!");
+              }}>📋 Duplicate this chapter</button>
             </div>
           </div>
         </div>
@@ -1070,7 +1070,7 @@ function UsersView({ showToast, courses }) {
       });
     } catch (e) {
       console.error("Users load error:", e);
-      showToast("Impossible de charger les utilisateurs", "error");
+      showToast("Unable to load users", "error");
     } finally {
       setLoading(false);
     }
@@ -1082,11 +1082,11 @@ function UsersView({ showToast, courses }) {
     const { error } = await sb.from("profiles").update({ premium: !current }).eq("id", uid);
     if (error) {
       console.error("Premium update error:", error);
-      showToast("Erreur lors de la mise à jour du premium", "error");
+      showToast("Error updating premium status", "error");
       return;
     }
     setUsers(prev => prev.map(u => u.id === uid ? { ...u, premium: !current } : u));
-    showToast(!current ? "Premium activé !" : "Premium retiré");
+    showToast(!current ? "Premium enabled!" : "Premium removed");
   };
 
   const premiumCount = users.filter(u => u.premium).length;
@@ -1094,28 +1094,28 @@ function UsersView({ showToast, courses }) {
   const totalValidated = users.reduce((sum, u) => sum + u.validatedCount, 0);
   const totalSessionSheets = users.reduce((sum, u) => sum + (u.sessionCount || 0), 0);
 
-  if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Chargement des utilisateurs...</div>;
+  if (loading) return <div style={{textAlign:"center",padding:40,color:"var(--text3)"}}>Loading users...</div>;
 
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginBottom:24}}>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{users.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--accent)"}}>{users.length}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>USERS</div></div></div>
         <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--yellow)"}}>{premiumCount}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>PREMIUM</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{activeLearners}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>UTILISATEURS ACTIFS</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalValidated}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>LEÇONS VALIDÉES</div></div></div>
-        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"#a855f7"}}>{totalSessionSheets}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>FICHES SESSION</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--green)"}}>{activeLearners}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>USERS ACTIFS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"var(--blue)"}}>{totalValidated}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>VALIDATED LESSONS</div></div></div>
+        <div className="card"><div className="card-body" style={{textAlign:"center"}}><div style={{fontSize:32,fontWeight:800,color:"#a855f7"}}>{totalSessionSheets}</div><div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>SESSION SHEETS</div></div></div>
       </div>
 
       <div className="card">
         <div className="card-header" style={{gap:12,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}>
           <div>
-            <div className="card-title">👥 Tous les utilisateurs</div>
-            <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>Chaque profil permet maintenant de lire les fiches de session privées et d'afficher une courbe d'évolution des chronos, circuit par circuit.</div>
+            <div className="card-title">👥 All users</div>
+            <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>Each profile allows you to read private session sheets and display a lap time progression curve, track by track.</div>
           </div>
-          <button className="btn btn-secondary btn-sm" onClick={loadUsers}>↻ Rafraîchir</button>
+          <button className="btn btn-secondary btn-sm" onClick={loadUsers}>↻ Refresh</button>
         </div>
         <div className="card-body">
-          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>Aucun utilisateur inscrit</div> : users.map(u => {
+          {users.length === 0 ? <div style={{textAlign:"center",color:"var(--text3)",padding:20}}>No registered users</div> : users.map(u => {
             const isOpen = openUserId === u.id;
             const selectedTrack = trackFilters[u.id] || u.sessionLogs.find(log => log.track && ACC_TRACKS.includes(log.track))?.track || "";
             const trackOptions = ACC_TRACKS.filter(track => u.sessionLogs.some(log => log.track === track));
@@ -1137,51 +1137,51 @@ function UsersView({ showToast, courses }) {
                   <div style={{width:40,height:40,borderRadius:"50%",background:u.premium?"var(--yellow)22":"var(--surface3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0}}>{u.premium?"👑":"👤"}</div>
                   <div style={{flex:1,minWidth:220}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                      <div style={{fontWeight:700,fontSize:14}}>{u.display_name || "Sans nom"}</div>
+                      <div style={{fontWeight:700,fontSize:14}}>{u.display_name || "No name"}</div>
                       {u.premium && <span style={{fontSize:10,fontWeight:700,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>PREMIUM</span>}
                     </div>
                     <div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>{u.email}</div>
-                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Inscrit le {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}{u.last_active ? ` · Dernière activité ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}{u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Registered {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}{u.last_active ? ` · Last active ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}{u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginLeft:"auto"}}>
                     <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:118,textAlign:"center"}}><div style={{fontSize:12,fontWeight:800,color:"var(--text1)"}}>{u.last_active ? new Date(u.last_active).toLocaleDateString("fr-FR") : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>LAST ACTIVE</div></div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDÉES</div></div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>MOYENNE</div></div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESSION</div></div>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{u.sessionCount || 0}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>FICHES</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDATED</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>AVG SCORE</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESS</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{u.sessionCount || 0}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>SHEETS</div></div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                    <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>{u.premium ? "Retirer Premium" : "👑 Premium"}</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setOpenUserId(isOpen ? null : u.id)}>{isOpen ? "Masquer le détail" : "Voir le détail"}</button>
+                    <button className={`btn btn-sm ${u.premium?"btn-danger":"btn-primary"}`} onClick={() => togglePremium(u.id, u.premium)} style={{fontSize:11}}>{u.premium ? "Remove Premium" : "👑 Premium"}</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setOpenUserId(isOpen ? null : u.id)}>{isOpen ? "Hide details" : "View details"}</button>
                   </div>
                 </div>
                 {isOpen && <div style={{padding:"0 16px 16px",borderTop:"1px solid var(--border)",background:"var(--bg)"}}>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,paddingTop:16}}>
                     <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
-                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>✅ Leçons validées ({u.validatedCount})</div>
-                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.validatedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune leçon validée pour l'instant.</div> : u.validatedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--green)22",color:"var(--green)",border:"1px solid var(--green)44"}}>Quiz validé</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
+                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>✅ Validated lessons ({u.validatedCount})</div>
+                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.validatedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No validated lessons yet.</div> : u.validatedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Lesson deleted or renamed"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--green)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--green)22",color:"var(--green)",border:"1px solid var(--green)44"}}>Quiz passed</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
                     </div>
                     <div style={{border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
-                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>🟡 Quiz tentés non validés ({u.attemptedCount})</div>
-                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.attemptedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune tentative non validée.</div> : u.attemptedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Leçon supprimée ou renommée"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--yellow)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>Sous 70%</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
+                      <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>🟡 Attempted quizzes (not passed) ({u.attemptedCount})</div>
+                      <div style={{padding:12,maxHeight:340,overflowY:"auto"}}>{u.attemptedLessons.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No failed attempts.</div> : u.attemptedLessons.map((entry, index) => <div key={`${entry.chapterId}-${index}`} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)",marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}><div><div style={{fontWeight:700,fontSize:13}}>{entry.meta?.title || entry.chapterId}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{entry.meta ? `${entry.meta.courseIcon} ${entry.meta.courseTitle} · ${entry.meta.level}` : "Lesson deleted or renamed"}</div></div><div style={{fontSize:12,fontWeight:700,color:"var(--yellow)",whiteSpace:"nowrap"}}>{Math.round(entry.bestScore ?? entry.quizScore ?? 0)}%</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}><span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>Below 70%</span>{entry.meta?.quizCount != null && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>{entry.meta.quizCount} question{entry.meta.quizCount > 1 ? "s" : ""}</span>}</div></div>)}</div>
                     </div>
                   </div>
                   <div style={{marginTop:16,border:"1px solid var(--border)",borderRadius:12,background:"var(--surface)",overflow:"hidden"}}>
-                    <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>📈 Développement piste par piste</div>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",fontWeight:700,fontSize:13}}>📈 Track-by-track development</div>
                     <div style={{padding:12}}>
-                      {u.sessionCount === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune fiche de session enregistrée.</div> : <>
+                      {u.sessionCount === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No session sheets recorded.</div> : <>
                         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginBottom:14}}>
-                          <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Circuit</div><select className="form-input" value={selectedTrack} onChange={e=>setTrackFilters(prev=>({...prev,[u.id]:e.target.value}))}><option value="">Choisir un circuit</option>{trackOptions.map(track=><option key={track} value={track}>{track}</option>)}</select></div>
-                          <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Graphique affiché</div><select className="form-input" value={selectedMetric} onChange={e=>setMetricFilters(prev=>({...prev,[u.id]:e.target.value}))}>{ADMIN_DEVELOPMENT_METRICS.map(metric=><option key={metric.value} value={metric.value}>{metric.label}</option>)}</select></div>
-                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{filteredLogs.length}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>SESSIONS SUR CE CIRCUIT</div></div>
-                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{bestSeconds != null ? formatLapSeconds(bestSeconds) : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>BEST LOGGÉ</div></div>
-                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{bestFinish != null ? `P${bestFinish}` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>MEILLEURE ARRIVÉE</div></div>
-                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"#fb7185"}}>{totalCrashes}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>CRASHS LOGGÉS</div></div>
+                          <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Track</div><select className="form-input" value={selectedTrack} onChange={e=>setTrackFilters(prev=>({...prev,[u.id]:e.target.value}))}><option value="">Select a track</option>{trackOptions.map(track=><option key={track} value={track}>{track}</option>)}</select></div>
+                          <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Chart displayed</div><select className="form-input" value={selectedMetric} onChange={e=>setMetricFilters(prev=>({...prev,[u.id]:e.target.value}))}>{ADMIN_DEVELOPMENT_METRICS.map(metric=><option key={metric.value} value={metric.value}>{metric.label}</option>)}</select></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"#a855f7"}}>{filteredLogs.length}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>SESSIONS ON THIS TRACK</div></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{bestSeconds != null ? formatLapSeconds(bestSeconds) : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>BEST LOGGED</div></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{bestFinish != null ? `P${bestFinish}` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>BEST FINISH</div></div>
+                          <div style={{padding:"10px 12px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)"}}><div style={{fontSize:18,fontWeight:800,color:"#fb7185"}}>{totalCrashes}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:4}}>CRASHES LOGGED</div></div>
                         </div>
-                        {!selectedTrack ? <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>Sélectionne un circuit pour afficher la courbe et les fiches correspondantes.</div> : <>
-                          <div style={{fontSize:"12px",color:"var(--text3)",marginBottom:10}}>Un seul graphique à la fois pour garder la lecture claire côté coaching. Vue active : <span style={{color:"var(--text1)"}}>{metricMeta.title}</span>.</div>
+                        {!selectedTrack ? <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>Select a track to display the curve and corresponding sheets.</div> : <>
+                          <div style={{fontSize:"12px",color:"var(--text3)",marginBottom:10}}>One chart at a time for clear coaching review. Active view: <span style={{color:"var(--text1)"}}>{metricMeta.title}</span>.</div>
                           <AdminDevelopmentMetricChart points={chartPoints} metric={selectedMetric} title={`${selectedTrack} · ${metricMeta.title.toLowerCase()}`} />
-                          <div style={{marginTop:14,maxHeight:360,overflowY:"auto",display:"grid",gap:8}}>{filteredLogs.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>Aucune fiche pour ce circuit.</div> : filteredLogs.map(log => <div key={log.id} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)"}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}><div><div style={{fontWeight:700,fontSize:13}}>{log.session_date ? new Date(`${log.session_date}T12:00:00`).toLocaleDateString("fr-FR") : "Sans date"}{log.car ? ` · ${log.car}` : ""}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{selectedTrack}{log.updated_at ? ` · maj ${new Date(log.updated_at).toLocaleDateString("fr-FR")} ${new Date(log.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{log.best_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff6b8a",border:"1px solid #e11d4844"}}>Best {log.best_lap}</span>}{log.average_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>Avg {log.average_lap}</span>}{log.starting_position != null && log.starting_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#141924",color:"#9db4ff",border:"1px solid #243047"}}>Départ P{log.starting_position}</span>}{log.finishing_position != null && log.finishing_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#132018",color:"#8ee7a8",border:"1px solid #214430"}}>Arrivée P{log.finishing_position}</span>}<span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#241617",color:"#fca5a5",border:"1px solid #462023"}}>{Math.max(0, parseInt(log.crash_count, 10) || 0)} crash{Math.max(0, parseInt(log.crash_count, 10) || 0) === 1 ? '' : 's'}</span></div></div>{(log.focus || log.main_mistake || log.notes) && <div style={{display:"grid",gap:8,marginTop:10}}>{log.focus && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Focus</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.focus}</div></div>}{log.main_mistake && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Main issue</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.main_mistake}</div></div>}{log.notes && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{log.notes}</div></div>}</div>}</div>)}</div>
+                          <div style={{marginTop:14,maxHeight:360,overflowY:"auto",display:"grid",gap:8}}>{filteredLogs.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No sheets for this track.</div> : filteredLogs.map(log => <div key={log.id} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)"}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}><div><div style={{fontWeight:700,fontSize:13}}>{log.session_date ? new Date(`${log.session_date}T12:00:00`).toLocaleDateString("fr-FR") : "No date"}{log.car ? ` · ${log.car}` : ""}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{selectedTrack}{log.updated_at ? ` · maj ${new Date(log.updated_at).toLocaleDateString("fr-FR")} ${new Date(log.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{log.best_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff6b8a",border:"1px solid #e11d4844"}}>Best {log.best_lap}</span>}{log.average_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>Avg {log.average_lap}</span>}{log.starting_position != null && log.starting_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#141924",color:"#9db4ff",border:"1px solid #243047"}}>Start P{log.starting_position}</span>}{log.finishing_position != null && log.finishing_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#132018",color:"#8ee7a8",border:"1px solid #214430"}}>Finish P{log.finishing_position}</span>}<span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#241617",color:"#fca5a5",border:"1px solid #462023"}}>{Math.max(0, parseInt(log.crash_count, 10) || 0)} crash{Math.max(0, parseInt(log.crash_count, 10) || 0) === 1 ? '' : 's'}</span></div></div>{(log.focus || log.main_mistake || log.notes) && <div style={{display:"grid",gap:8,marginTop:10}}>{log.focus && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Focus</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.focus}</div></div>}{log.main_mistake && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Main issue</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.main_mistake}</div></div>}{log.notes && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{log.notes}</div></div>}</div>}</div>)}</div>
                         </>}
                       </>}
                     </div>
@@ -1204,32 +1204,32 @@ function CoachingEditor({ showToast }) {
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Invalid admin session — please sign in again", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
-    showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnectez-vous",ok?"success":"error");
+    showToast(ok?"Coaching page saved and synced!":"Error — please sign in again",ok?"success":"error");
   };
 
   return(<div>
-    <div className="card"><div className="card-header"><div className="card-title">📝 Textes de la page</div></div><div className="card-body">
-      <div className="form-group"><label className="form-label">Titre principal</label><input className="form-input" value={c.title} onChange={e=>upd(d=>{d.title=e.target.value})}/></div>
-      <div className="form-group"><label className="form-label">Sous-titre</label><input className="form-input" value={c.subtitle} onChange={e=>upd(d=>{d.subtitle=e.target.value})}/></div>
-      <div className="form-group"><label className="form-label">Titre session</label><input className="form-input" value={c.sessionTitle} onChange={e=>upd(d=>{d.sessionTitle=e.target.value})}/></div>
-      <div className="form-group"><label className="form-label">Sous-titre session</label><input className="form-input" value={c.sessionSub} onChange={e=>upd(d=>{d.sessionSub=e.target.value})}/></div>
+    <div className="card"><div className="card-header"><div className="card-title">📝 Page texts</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">Main title</label><input className="form-input" value={c.title} onChange={e=>upd(d=>{d.title=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Subtitle</label><input className="form-input" value={c.subtitle} onChange={e=>upd(d=>{d.subtitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Session title</label><input className="form-input" value={c.sessionTitle} onChange={e=>upd(d=>{d.sessionTitle=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Session subtitle</label><input className="form-input" value={c.sessionSub} onChange={e=>upd(d=>{d.sessionSub=e.target.value})}/></div>
       <div className="form-group"><label className="form-label">Description</label><textarea className="form-input" rows={3} value={c.sessionDesc} onChange={e=>upd(d=>{d.sessionDesc=e.target.value})}/></div>
     </div></div>
-    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">✨ Avantages listés</div><button className="btn btn-sm btn-primary" onClick={()=>upd(d=>{d.features=[...d.features,"Nouvel avantage"]})}>+ Ajouter</button></div><div className="card-body">
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">✨ Listed benefits</div><button className="btn btn-sm btn-primary" onClick={()=>upd(d=>{d.features=[...d.features,"New benefit"]})}>+ Add</button></div><div className="card-body">
       {(c.features||[]).map((f,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:6}}>
         <input className="form-input" style={{marginBottom:0}} value={f} onChange={e=>upd(d=>{d.features[i]=e.target.value})}/>
         {i>0&&<button className="btn-icon" onClick={()=>upd(d=>{const t=d.features[i];d.features[i]=d.features[i-1];d.features[i-1]=t})}>↑</button>}
         <button className="btn-icon" style={{color:"var(--red)"}} onClick={()=>upd(d=>{d.features.splice(i,1)})}>✗</button>
       </div>)}
     </div></div>
-    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">🔗 Bouton de réservation</div></div><div className="card-body">
-      <div className="form-group"><label className="form-label">URL de réservation</label><input className="form-input" value={c.bookUrl||""} onChange={e=>upd(d=>{d.bookUrl=e.target.value})}/></div>
-      <div className="form-group"><label className="form-label">Texte du bouton</label><input className="form-input" value={c.bookLabel||""} onChange={e=>upd(d=>{d.bookLabel=e.target.value})}/></div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">🔗 Booking button</div></div><div className="card-body">
+      <div className="form-group"><label className="form-label">Booking URL</label><input className="form-input" value={c.bookUrl||""} onChange={e=>upd(d=>{d.bookUrl=e.target.value})}/></div>
+      <div className="form-group"><label className="form-label">Button text</label><input className="form-input" value={c.bookLabel||""} onChange={e=>upd(d=>{d.bookLabel=e.target.value})}/></div>
     </div></div>
-    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveCoaching}>💾 Sauvegarder et synchroniser</button>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveCoaching}>💾 Save & sync</button>
   </div>);
 }
 
@@ -1241,17 +1241,17 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Invalid admin session — please sign in again", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
-    showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnectez-vous",ok?"success":"error");
+    showToast(ok?"Layout saved and synced!":"Error — please sign in again",ok?"success":"error");
   };
 
-  const blockLabels={nextLesson:"🎯 Next Lesson (mise en avant)",courses:"📚 Liste des parcours"};
+  const blockLabels={nextLesson:"🎯 Next Lesson (featured)",courses:"📚 Liste des courses"};
 
   return(<div>
-    <div className="card"><div className="card-header"><div className="card-title">🏠 Ordre des blocs sur l'accueil</div></div><div className="card-body">
-      <div className="para-hint">Déplace les blocs pour changer l'ordre. "Next Lesson" en haut = mise en avant.</div>
+    <div className="card"><div className="card-header"><div className="card-title">🏠 Home page block order</div></div><div className="card-body">
+      <div className="para-hint">Drag blocks to change order. "Next Lesson" on top = featured.</div>
       {layout.map((key,i)=>(
         <div key={key} className="list-item">
           <span className="drag-handle">☰</span>
@@ -1264,12 +1264,12 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
       ))}
     </div></div>
 
-    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Ordre des parcours</div></div><div className="card-body">
-      <div className="para-hint">Change l'ordre d'affichage des parcours dans l'app.</div>
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Ordre des courses</div></div><div className="card-body">
+      <div className="para-hint">Change l'ordre d'affichage des courses dans l'app.</div>
       {courses.map((c,ci)=>(
         <div key={c.id} className="list-item">
           <span style={{fontSize:24}}>{c.icon}</span>
-          <div className="item-info"><div className="item-title">{c.title}</div><div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapitres</div></div>
+          <div className="item-info"><div className="item-title">{c.title}</div><div className="item-sub">{c.levels.reduce((s,l)=>s+l.chapters.length,0)} chapters</div></div>
           <div className="item-actions">
             {ci>0&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci-1];d[ci-1]=t})}>↑</button>}
             {ci<courses.length-1&&<button className="btn-icon" onClick={()=>updateCourses(d=>{const t=d[ci];d[ci]=d[ci+1];d[ci+1]=t})}>↓</button>}
@@ -1277,7 +1277,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
         </div>
       ))}
     </div></div>
-    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveLayout}>💾 Sauvegarder et synchroniser</button>
+    <button className="btn btn-primary" style={{marginTop:16}} onClick={saveLayout}>💾 Save & sync</button>
   </div>);
 }
 
