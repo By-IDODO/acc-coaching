@@ -136,7 +136,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ━━━ ADMIN EMAIL — Change this to YOUR email ━━━━━━━━━━━━━━━━
-const ADMIN_EMAIL = "dorian.castelli29@gmail.com";
+const ADMIN_EMAILS = ["dorian.castelli29@gmail.com", "info@xboxcommunityleague.com"];
 
 
 const ACC_TRACKS=["Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
@@ -425,7 +425,7 @@ function AdminApp() {
     saveData(courses);
     try {
       const { data: { user }, error: userError } = await sb.auth.getUser();
-      if (userError || !user || user.email !== ADMIN_EMAIL) {
+      if (userError || !user || !ADMIN_EMAILS.includes(user.email)) {
         showToast("Session admin invalide — reconnectez-vous", "error");
         return;
       }
@@ -476,13 +476,13 @@ function AdminApp() {
 
   // Auth gate: must be logged in with admin email
   if (authUser === undefined) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif"}}><div style={{textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>⚙️</div><div>Chargement...</div></div></div>;
-  if (authUser === null || authUser.email !== ADMIN_EMAIL) return (
+  if (authUser === null || !ADMIN_EMAILS.includes(authUser.email)) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#101114",color:"#e4e4e7",fontFamily:"'DM Sans',sans-serif",padding:20}}>
       <div style={{maxWidth:380,width:"100%"}}>
         <div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔒</div><div style={{fontSize:20,fontWeight:700}}>Admin Panel</div><div style={{fontSize:12,color:"#9294a0",marginTop:4}}>Connexion requise — accès réservé à l'administrateur</div></div>
         <div style={{background:"#16171c",border:"1px solid #2a2b33",borderRadius:12,padding:24}}>
           {loginErr && <div style={{color:"#ef4444",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#ef444415",borderRadius:6}}>{loginErr}</div>}
-          {authUser && authUser.email !== ADMIN_EMAIL && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} n'est pas autorisé. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Se déconnecter</button></div>}
+          {authUser && !ADMIN_EMAILS.includes(authUser.email) && <div style={{color:"#f59e0b",fontSize:12,marginBottom:12,padding:"8px 12px",background:"#f59e0b15",borderRadius:6}}>⚠️ {authUser.email} n'est pas autorisé. <button style={{background:"none",border:"none",color:"#e11d48",cursor:"pointer",fontWeight:700}} onClick={()=>sb.auth.signOut()}>Se déconnecter</button></div>}
           <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:10}} type="email" placeholder="Email admin" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}/>
           <input style={{width:"100%",padding:"10px 14px",background:"#101114",border:"1px solid #2a2b33",borderRadius:8,color:"#e4e4e7",fontSize:14,marginBottom:12}} type="password" placeholder="Mot de passe" value={loginPass} onChange={e=>setLoginPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doLogin()}/>
           <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}} onClick={doLogin}>Se connecter</button>
@@ -615,56 +615,8 @@ function AdminApp() {
 // ─── DASHBOARD ────────────────────────────────────────────────
 function DashboardView({ courses, nav, updateCourses, showToast }) {
   const fileRef = useRef();
-  const lessonPackRef = useRef();
   const totalCh = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.length, 0), 0);
   const totalQ = courses.reduce((s,c) => s + c.levels.reduce((s2,l) => s2 + l.chapters.reduce((s3,ch) => s3 + ch.quiz.length, 0), 0), 0);
-
-  const normalizeLabel = (value='') => String(value)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim()
-    .toLowerCase();
-  const slugLabel = (value='') => normalizeLabel(value).replace(/[^a-z0-9]+/g, ' ').trim();
-  const getCourseAliases = (course={}) => {
-    const base = new Set([
-      normalizeLabel(course.title || ''),
-      normalizeLabel(course.id || ''),
-      slugLabel(course.title || ''),
-      slugLabel(course.id || '')
-    ].filter(Boolean));
-    const title = slugLabel(course.title || '');
-    const courseId = slugLabel(course.id || '');
-    if (title === 'driving' || title === 'pure driving' || courseId === 'pilotage') {
-      ['driving','pure driving','pilotage'].forEach(v => base.add(v));
-    }
-    if (title === 'racecraft' || courseId === 'racecraft') {
-      ['racecraft'].forEach(v => base.add(v));
-    }
-    if (title === 'car setup' || title === 'setup' || courseId === 'setup') {
-      ['car setup','setup'].forEach(v => base.add(v));
-    }
-    return [...base];
-  };
-  const findCourseByTarget = (list, rawTarget='') => {
-    const target = slugLabel(rawTarget);
-    if (!target) return null;
-    return list.find(course => {
-      const aliases = getCourseAliases(course);
-      return aliases.some(alias => alias === target || alias.includes(target) || target.includes(alias));
-    }) || null;
-  };
-  const sanitizeChapter = (chapter={}) => ({
-    id: String(chapter.id || uid()),
-    title: String(chapter.title || 'Nouveau chapitre'),
-    desc: String(chapter.desc || ''),
-    videoUrl: String(chapter.videoUrl || ''),
-    content: Array.isArray(chapter.content) ? chapter.content.map(item => String(item ?? '')).filter(Boolean) : [],
-    quiz: Array.isArray(chapter.quiz) ? chapter.quiz.map((entry={}) => ({
-      question: String(entry.question || ''),
-      options: Array.isArray(entry.options) ? entry.options.map(option => String(option ?? '')) : [],
-      correct: Number.isInteger(entry.correct) ? entry.correct : 0
-    })).filter(entry => entry.question && entry.options.length) : []
-  });
 
   const handleImport = (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -673,72 +625,11 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
       try {
         const data = JSON.parse(ev.target.result);
         if (Array.isArray(data) && data[0]?.levels) {
-          updateCourses(d => {
-            d.length = 0;
-            data.forEach(course => d.push(course));
-          });
-          showToast('Base JSON importée. Pense à sauvegarder.');
-        } else { showToast('Format JSON invalide', 'error'); }
-      } catch { showToast('Erreur de lecture JSON', 'error'); }
-      e.target.value = '';
-    };
-    reader.readAsText(file);
-  };
-
-  const handleLessonPackImport = (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const packs = JSON.parse(ev.target.result);
-        if (!Array.isArray(packs) || !packs.every(item => item && typeof item.target === 'string' && Array.isArray(item.chapters))) {
-          showToast('Format pack de leçons invalide', 'error');
-          e.target.value = '';
-          return;
-        }
-
-        let importedCount = 0;
-        let duplicateCount = 0;
-        let targetMissCount = 0;
-
-        updateCourses(d => {
-          packs.forEach(pack => {
-            const [courseTitleRaw='', levelTitleRaw=''] = String(pack.target || '').split('>').map(part => part.trim());
-            const course = findCourseByTarget(d, courseTitleRaw);
-            if (!course) { targetMissCount += pack.chapters.length || 0; return; }
-            const level = (course.levels || []).find(item => {
-              const levelLabel = slugLabel(item.level || '');
-              const targetLevel = slugLabel(levelTitleRaw);
-              return levelLabel === targetLevel || levelLabel.includes(targetLevel) || targetLevel.includes(levelLabel);
-            });
-            if (!level) { targetMissCount += pack.chapters.length || 0; return; }
-
-            const existingIds = new Set((level.chapters || []).map(ch => String(ch.id || '')));
-            pack.chapters.forEach(rawChapter => {
-              const chapter = sanitizeChapter(rawChapter);
-              if (existingIds.has(chapter.id)) { duplicateCount += 1; return; }
-              level.chapters.push(chapter);
-              existingIds.add(chapter.id);
-              importedCount += 1;
-            });
-          });
-        });
-
-        if (!importedCount && !duplicateCount && targetMissCount) {
-          showToast(`Aucune leçon importée : ${targetMissCount} cible(s) introuvable(s)`, 'error');
-        } else if (!importedCount && duplicateCount && !targetMissCount) {
-          showToast(`Import terminé : ${duplicateCount} doublon(s) ignoré(s)`, 'error');
-        } else {
-          const details = [];
-          details.push(`${importedCount} leçon(s) ajoutée(s)`);
-          if (duplicateCount) details.push(`${duplicateCount} doublon(s) ignoré(s)`);
-          if (targetMissCount) details.push(`${targetMissCount} cible(s) introuvable(s)`);
-          showToast(`${details.join(' · ')}. Pense à sauvegarder.`, importedCount ? 'success' : 'error');
-        }
-      } catch {
-        showToast('Erreur de lecture du pack JSON', 'error');
-      }
-      e.target.value = '';
+          updateCourses(() => {}); // trigger change
+          localStorage.setItem("acc-coaching-courses", JSON.stringify(data));
+          window.location.reload();
+        } else { showToast("Format JSON invalide", "error"); }
+      } catch { showToast("Erreur de lecture JSON", "error"); }
     };
     reader.readAsText(file);
   };
@@ -777,10 +668,8 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
       <div className="card" style={{marginTop:16}}>
         <div className="card-header"><div className="card-title">🔧 Outils</div></div>
         <div className="card-body" style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Importer JSON complet</button>
+          <button className="btn btn-secondary" onClick={() => fileRef.current?.click()}>📤 Importer JSON</button>
           <input ref={fileRef} type="file" accept=".json" style={{display:"none"}} onChange={handleImport}/>
-          <button className="btn btn-secondary" onClick={() => lessonPackRef.current?.click()}>🧩 Importer leçons JSON</button>
-          <input ref={lessonPackRef} type="file" accept=".json" style={{display:"none"}} onChange={handleLessonPackImport}/>
           <button className="btn btn-secondary" onClick={() => {
             const json = JSON.stringify(courses, null, 2);
             const blob = new Blob([json], {type:"application/json"});
@@ -1315,7 +1204,7 @@ function CoachingEditor({ showToast }) {
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || user.email !== ADMIN_EMAIL) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
     showToast(ok?"Page coaching sauvegardée et synchronisée !":"Erreur — reconnectez-vous",ok?"success":"error");
@@ -1352,7 +1241,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || user.email !== ADMIN_EMAIL) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Session admin invalide — reconnectez-vous", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
     showToast(ok?"Layout sauvegardé et synchronisé !":"Erreur — reconnectez-vous",ok?"success":"error");
