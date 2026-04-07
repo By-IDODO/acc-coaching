@@ -620,16 +620,86 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
 
   const handleImport = (e) => {
     const file = e.target.files[0]; if (!file) return;
+    const resetInput = () => { if (e?.target) e.target.value = ""; };
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
+
+        // 1) Full courses import (existing behavior)
         if (Array.isArray(data) && data[0]?.levels) {
-          updateCourses(() => {}); // trigger change
-          localStorage.setItem("acc-coaching-courses", JSON.stringify(data));
-          window.location.reload();
-        } else { showToast("Invalid JSON format", "error"); }
-      } catch { showToast("JSON read error", "error"); }
+          localStorage.setItem(DATA_KEY, JSON.stringify(data));
+          showToast("Full JSON imported");
+          setTimeout(() => window.location.reload(), 250);
+          resetInput();
+          return;
+        }
+
+        // 2) Quiz-by-chapter import: { "chapter-id": [ {question, options, correct}, ... ] }
+        if (data && !Array.isArray(data) && typeof data === "object") {
+          const entries = Object.entries(data);
+          const looksLikeQuizMap = entries.length > 0 && entries.every(([chapterId, quiz]) =>
+            typeof chapterId === "string" &&
+            Array.isArray(quiz) &&
+            quiz.every(q =>
+              q &&
+              typeof q.question === "string" &&
+              Array.isArray(q.options) &&
+              typeof q.correct === "number"
+            )
+          );
+
+          if (looksLikeQuizMap) {
+            const nextCourses = JSON.parse(JSON.stringify(courses || []));
+            const chapterMap = new Map();
+            nextCourses.forEach(course => {
+              (course.levels || []).forEach(level => {
+                (level.chapters || []).forEach(chapter => {
+                  chapterMap.set(chapter.id, chapter);
+                });
+              });
+            });
+
+            let updatedChapters = 0;
+            let totalQuestions = 0;
+            const missingIds = [];
+
+            entries.forEach(([chapterId, quiz]) => {
+              const chapter = chapterMap.get(chapterId);
+              if (!chapter) {
+                missingIds.push(chapterId);
+                return;
+              }
+              chapter.quiz = quiz.map(q => ({
+                question: String(q.question || ""),
+                options: Array.isArray(q.options) ? q.options.map(opt => String(opt || "")) : ["","","",""],
+                correct: Number.isInteger(q.correct) ? q.correct : 0
+              }));
+              updatedChapters++;
+              totalQuestions += chapter.quiz.length;
+            });
+
+            localStorage.setItem(DATA_KEY, JSON.stringify(nextCourses));
+
+            if (updatedChapters > 0) {
+              const extra = missingIds.length ? ` · Missing: ${missingIds.length}` : "";
+              showToast(`Quiz import complete: ${updatedChapters} chapters · ${totalQuestions} questions${extra}`);
+              setTimeout(() => window.location.reload(), 300);
+            } else {
+              showToast("No matching chapter IDs found in current courses", "error");
+            }
+
+            resetInput();
+            return;
+          }
+        }
+
+        showToast("Invalid JSON format", "error");
+      } catch (err) {
+        console.error(err);
+        showToast("JSON read error", "error");
+      }
+      resetInput();
     };
     reader.readAsText(file);
   };
