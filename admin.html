@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -139,7 +139,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const ADMIN_EMAILS = ["dorian.castelli29@gmail.com", "info@xboxcommunityleague.com"];
 
 
-const ACC_TRACKS=["Barcelona","Brands Hatch","Track of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
+const ACC_TRACKS=["Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
 const parseLapTimeToSeconds=(value)=>{
   if(value==null)return null;
   const raw=String(value).trim().replace(/,/g,'.');
@@ -164,7 +164,7 @@ const formatLapSeconds=(seconds)=>{
 const ADMIN_DEVELOPMENT_METRICS=[
   {value:'lap_time',label:'Lap time / best lap'},
   {value:'starting_position',label:'Starting position'},
-  {value:'finishing_position',label:'Position d’arrivée'},
+  {value:'finishing_position',label:'Finishing position'},
   {value:'crash_count',label:'Crash count'},
   {value:'crash_rate',label:'Crash / clean split'}
 ];
@@ -920,7 +920,7 @@ function ChapterEditor({ courses, ci, li, chi, updateCourses, showToast }) {
                   {q.image && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><img src={q.image} style={{width:"100%",maxHeight:150,objectFit:"cover",display:"block"}} alt=""/></div>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">🎬 Video de la question (optionnel)</label>
+                  <label className="form-label">🎬 Question video (optional)</label>
                   <input className="form-input" value={q.video||""} onChange={e=>update(ch=>{ch.quiz[qi].video=e.target.value||undefined})} placeholder="https://www.youtube.com/embed/XXXXXX"/>
                   <div className="para-hint" style={{marginTop:4}}>YouTube embed link only. e.g.: https://www.youtube.com/embed/abc123</div>
                   {q.video && <div style={{marginTop:6,borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}><iframe src={q.video} style={{width:"100%",aspectRatio:"16/9",border:"none"}} allowFullScreen/></div>}
@@ -1141,10 +1141,10 @@ function UsersView({ showToast, courses }) {
                       {u.premium && <span style={{fontSize:10,fontWeight:700,padding:"4px 8px",borderRadius:999,background:"var(--yellow)22",color:"var(--yellow)",border:"1px solid var(--yellow)44"}}>PREMIUM</span>}
                     </div>
                     <div style={{fontSize:12,color:"var(--text2)",marginTop:4}}>{u.email}</div>
-                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Registered {u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "—"}{u.last_active ? ` · Last active ${new Date(u.last_active).toLocaleDateString("fr-FR")} ${new Date(u.last_active).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}{u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("fr-FR")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+                    <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Registered {u.created_at ? new Date(u.created_at).toLocaleDateString("en-GB") : "—"}{u.last_active ? ` · Last active ${new Date(u.last_active).toLocaleDateString("en-GB")} ${new Date(u.last_active).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}{u.progressUpdatedAt ? ` · Progress sync ${new Date(u.progressUpdatedAt).toLocaleDateString("en-GB")} ${new Date(u.progressUpdatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</div>
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginLeft:"auto"}}>
-                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:118,textAlign:"center"}}><div style={{fontSize:12,fontWeight:800,color:"var(--text1)"}}>{u.last_active ? new Date(u.last_active).toLocaleDateString("fr-FR") : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>LAST ACTIVE</div></div>
+                    <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:118,textAlign:"center"}}><div style={{fontSize:12,fontWeight:800,color:"var(--text1)"}}>{u.last_active ? new Date(u.last_active).toLocaleDateString("en-GB") : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>LAST ACTIVE</div></div>
                     <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--accent)"}}>{u.validatedCount}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>VALIDATED</div></div>
                     <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--green)"}}>{u.avgScore != null ? `${u.avgScore}%` : "—"}</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>AVG SCORE</div></div>
                     <div style={{padding:"8px 10px",borderRadius:10,background:"var(--bg)",border:"1px solid var(--border)",minWidth:88,textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"var(--blue)"}}>{u.progressPercent}%</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>PROGRESS</div></div>
@@ -1181,7 +1181,7 @@ function UsersView({ showToast, courses }) {
                         {!selectedTrack ? <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px"}}>Select a track to display the curve and corresponding sheets.</div> : <>
                           <div style={{fontSize:"12px",color:"var(--text3)",marginBottom:10}}>One chart at a time for clear coaching review. Active view: <span style={{color:"var(--text1)"}}>{metricMeta.title}</span>.</div>
                           <AdminDevelopmentMetricChart points={chartPoints} metric={selectedMetric} title={`${selectedTrack} · ${metricMeta.title.toLowerCase()}`} />
-                          <div style={{marginTop:14,maxHeight:360,overflowY:"auto",display:"grid",gap:8}}>{filteredLogs.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No sheets for this track.</div> : filteredLogs.map(log => <div key={log.id} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)"}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}><div><div style={{fontWeight:700,fontSize:13}}>{log.session_date ? new Date(`${log.session_date}T12:00:00`).toLocaleDateString("fr-FR") : "No date"}{log.car ? ` · ${log.car}` : ""}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{selectedTrack}{log.updated_at ? ` · maj ${new Date(log.updated_at).toLocaleDateString("fr-FR")} ${new Date(log.updated_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{log.best_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff6b8a",border:"1px solid #e11d4844"}}>Best {log.best_lap}</span>}{log.average_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>Avg {log.average_lap}</span>}{log.starting_position != null && log.starting_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#141924",color:"#9db4ff",border:"1px solid #243047"}}>Start P{log.starting_position}</span>}{log.finishing_position != null && log.finishing_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#132018",color:"#8ee7a8",border:"1px solid #214430"}}>Finish P{log.finishing_position}</span>}<span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#241617",color:"#fca5a5",border:"1px solid #462023"}}>{Math.max(0, parseInt(log.crash_count, 10) || 0)} crash{Math.max(0, parseInt(log.crash_count, 10) || 0) === 1 ? '' : 's'}</span></div></div>{(log.focus || log.main_mistake || log.notes) && <div style={{display:"grid",gap:8,marginTop:10}}>{log.focus && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Focus</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.focus}</div></div>}{log.main_mistake && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Main issue</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.main_mistake}</div></div>}{log.notes && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{log.notes}</div></div>}</div>}</div>)}</div>
+                          <div style={{marginTop:14,maxHeight:360,overflowY:"auto",display:"grid",gap:8}}>{filteredLogs.length === 0 ? <div style={{fontSize:12,color:"var(--text3)"}}>No sheets for this track.</div> : filteredLogs.map(log => <div key={log.id} style={{padding:12,border:"1px solid var(--border)",borderRadius:10,background:"var(--bg)"}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start",flexWrap:"wrap"}}><div><div style={{fontWeight:700,fontSize:13}}>{log.session_date ? new Date(`${log.session_date}T12:00:00`).toLocaleDateString("en-GB") : "No date"}{log.car ? ` · ${log.car}` : ""}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{selectedTrack}{log.updated_at ? ` · maj ${new Date(log.updated_at).toLocaleDateString("en-GB")} ${new Date(log.updated_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""}</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{log.best_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#e11d4822",color:"#ff6b8a",border:"1px solid #e11d4844"}}>Best {log.best_lap}</span>}{log.average_lap && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"var(--surface3)",color:"var(--text2)",border:"1px solid var(--border)"}}>Avg {log.average_lap}</span>}{log.starting_position != null && log.starting_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#141924",color:"#9db4ff",border:"1px solid #243047"}}>Start P{log.starting_position}</span>}{log.finishing_position != null && log.finishing_position !== '' && <span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#132018",color:"#8ee7a8",border:"1px solid #214430"}}>Finish P{log.finishing_position}</span>}<span style={{fontSize:10,padding:"4px 8px",borderRadius:999,background:"#241617",color:"#fca5a5",border:"1px solid #462023"}}>{Math.max(0, parseInt(log.crash_count, 10) || 0)} crash{Math.max(0, parseInt(log.crash_count, 10) || 0) === 1 ? '' : 's'}</span></div></div>{(log.focus || log.main_mistake || log.notes) && <div style={{display:"grid",gap:8,marginTop:10}}>{log.focus && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Focus</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.focus}</div></div>}{log.main_mistake && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Main issue</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6}}>{log.main_mistake}</div></div>}{log.notes && <div><div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Notes</div><div style={{fontSize:12,color:"var(--text1)",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{log.notes}</div></div>}</div>}</div>)}</div>
                         </>}
                       </>}
                     </div>
@@ -1247,7 +1247,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
     showToast(ok?"Layout saved and synced!":"Error — please sign in again",ok?"success":"error");
   };
 
-  const blockLabels={nextLesson:"🎯 Next Lesson (featured)",courses:"📚 Liste des courses"};
+  const blockLabels={nextLesson:"🎯 Next Lesson (featured)",courses:"📚 Course list"};
 
   return(<div>
     <div className="card"><div className="card-header"><div className="card-title">🏠 Home page block order</div></div><div className="card-body">
@@ -1264,7 +1264,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
       ))}
     </div></div>
 
-    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Ordre des courses</div></div><div className="card-body">
+    <div className="card" style={{marginTop:16}}><div className="card-header"><div className="card-title">📚 Course order</div></div><div className="card-body">
       <div className="para-hint">Change l'ordre d'affichage des courses dans l'app.</div>
       {courses.map((c,ci)=>(
         <div key={c.id} className="list-item">
