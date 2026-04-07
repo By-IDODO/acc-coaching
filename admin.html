@@ -136,7 +136,7 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ━━━ ADMIN EMAIL — Change this to YOUR email ━━━━━━━━━━━━━━━━
-const ADMIN_EMAILS = ["dorian.castelli29@gmail.com", "info@xboxcommunityleague.com"];
+const ADMIN_EMAILS = ["dorian.castelli29@gmail.com", "info@xboxcommunityleague.com"].map(email => email.toLowerCase());
 
 
 const ACC_TRACKS=["Barcelona","Brands Hatch","Circuit of the Americas","Donington Park","Hungaroring","Imola","Indianapolis","Kyalami","Laguna Seca","Misano","Monza","Mount Panorama","Nürburgring","Nürburgring 24H","Oulton Park","Paul Ricard","Red Bull Ring","Silverstone","Snetterton","Spa-Francorchamps","Suzuka","Valencia","Watkins Glen","Zandvoort","Zolder"];
@@ -425,7 +425,7 @@ function AdminApp() {
     saveData(courses);
     try {
       const { data: { user }, error: userError } = await sb.auth.getUser();
-      if (userError || !user || !ADMIN_EMAILS.includes(user.email)) {
+      if (userError || !user || !ADMIN_EMAILS.includes((user.email || "").toLowerCase())) {
         showToast("Invalid admin session — please sign in again", "error");
         return;
       }
@@ -620,76 +620,92 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
 
   const handleImport = (e) => {
     const file = e.target.files[0]; if (!file) return;
-    const resetInput = () => { if (e?.target) e.target.value = ""; };
     const reader = new FileReader();
+
+    const isQuizQuestion = (item) => {
+      return !!item
+        && typeof item === "object"
+        && typeof item.question === "string"
+        && Array.isArray(item.options)
+        && item.options.length >= 2
+        && Number.isInteger(item.correct)
+        && item.correct >= 0
+        && item.correct < item.options.length;
+    };
+
+    const applyQuizImport = (quizMap) => {
+      let chaptersUpdated = 0;
+      let questionsImported = 0;
+      const missingIds = [];
+
+      const nextCourses = JSON.parse(JSON.stringify(courses));
+
+      Object.entries(quizMap).forEach(([chapterId, quiz]) => {
+        let found = false;
+
+        for (const course of nextCourses) {
+          for (const level of course.levels || []) {
+            for (const chapter of level.chapters || []) {
+              if (chapter.id === chapterId) {
+                chapter.quiz = quiz.map(q => ({
+                  question: String(q.question || ""),
+                  options: Array.isArray(q.options) ? q.options.map(opt => String(opt)) : [],
+                  correct: Number(q.correct)
+                }));
+                chaptersUpdated += 1;
+                questionsImported += chapter.quiz.length;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+          if (found) break;
+        }
+
+        if (!found) missingIds.push(chapterId);
+      });
+
+      localStorage.setItem(DATA_KEY, JSON.stringify(nextCourses));
+      updateCourses(d => {
+        d.length = 0;
+        nextCourses.forEach(course => d.push(course));
+      });
+
+      const summary = missingIds.length
+        ? `Quiz import complete: ${chaptersUpdated} chapters / ${questionsImported} questions. Missing IDs: ${missingIds.length}`
+        : `Quiz import complete: ${chaptersUpdated} chapters / ${questionsImported} questions.`;
+
+      showToast(summary, chaptersUpdated > 0 ? "success" : "error");
+    };
+
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
 
-        // 1) Full courses import (existing behavior)
         if (Array.isArray(data) && data[0]?.levels) {
           localStorage.setItem(DATA_KEY, JSON.stringify(data));
-          showToast("Full JSON imported");
-          setTimeout(() => window.location.reload(), 250);
-          resetInput();
+          updateCourses(d => {
+            d.length = 0;
+            data.forEach(course => d.push(course));
+          });
+          showToast("Full course JSON imported", "success");
+          e.target.value = "";
           return;
         }
 
-        // 2) Quiz-by-chapter import: { "chapter-id": [ {question, options, correct}, ... ] }
-        if (data && !Array.isArray(data) && typeof data === "object") {
+        if (data && typeof data === "object" && !Array.isArray(data)) {
           const entries = Object.entries(data);
-          const looksLikeQuizMap = entries.length > 0 && entries.every(([chapterId, quiz]) =>
-            typeof chapterId === "string" &&
-            Array.isArray(quiz) &&
-            quiz.every(q =>
-              q &&
-              typeof q.question === "string" &&
-              Array.isArray(q.options) &&
-              typeof q.correct === "number"
-            )
-          );
+          const looksLikeQuizMap = entries.length > 0 && entries.every(([chapterId, quiz]) => {
+            return typeof chapterId === "string"
+              && Array.isArray(quiz)
+              && quiz.length > 0
+              && quiz.every(isQuizQuestion);
+          });
 
           if (looksLikeQuizMap) {
-            const nextCourses = JSON.parse(JSON.stringify(courses || []));
-            const chapterMap = new Map();
-            nextCourses.forEach(course => {
-              (course.levels || []).forEach(level => {
-                (level.chapters || []).forEach(chapter => {
-                  chapterMap.set(chapter.id, chapter);
-                });
-              });
-            });
-
-            let updatedChapters = 0;
-            let totalQuestions = 0;
-            const missingIds = [];
-
-            entries.forEach(([chapterId, quiz]) => {
-              const chapter = chapterMap.get(chapterId);
-              if (!chapter) {
-                missingIds.push(chapterId);
-                return;
-              }
-              chapter.quiz = quiz.map(q => ({
-                question: String(q.question || ""),
-                options: Array.isArray(q.options) ? q.options.map(opt => String(opt || "")) : ["","","",""],
-                correct: Number.isInteger(q.correct) ? q.correct : 0
-              }));
-              updatedChapters++;
-              totalQuestions += chapter.quiz.length;
-            });
-
-            localStorage.setItem(DATA_KEY, JSON.stringify(nextCourses));
-
-            if (updatedChapters > 0) {
-              const extra = missingIds.length ? ` · Missing: ${missingIds.length}` : "";
-              showToast(`Quiz import complete: ${updatedChapters} chapters · ${totalQuestions} questions${extra}`);
-              setTimeout(() => window.location.reload(), 300);
-            } else {
-              showToast("No matching chapter IDs found in current courses", "error");
-            }
-
-            resetInput();
+            applyQuizImport(data);
+            e.target.value = "";
             return;
           }
         }
@@ -698,8 +714,9 @@ function DashboardView({ courses, nav, updateCourses, showToast }) {
       } catch (err) {
         console.error(err);
         showToast("JSON read error", "error");
+      } finally {
+        e.target.value = "";
       }
-      resetInput();
     };
     reader.readAsText(file);
   };
@@ -1274,7 +1291,7 @@ function CoachingEditor({ showToast }) {
   const upd=(fn)=>{setSettings(prev=>{const next={...prev,coaching:{...c}};fn(next.coaching);localStorage.setItem("acc-coaching-settings",JSON.stringify(next));return next})};
   const saveCoaching=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Invalid admin session — please sign in again", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes((user.email || "").toLowerCase())) { showToast("Invalid admin session — please sign in again", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
     showToast(ok?"Coaching page saved and synced!":"Error — please sign in again",ok?"success":"error");
@@ -1311,7 +1328,7 @@ function HomeLayoutEditor({ courses, updateCourses, showToast }) {
   const setLayout=(newLayout)=>{const next={...settings,homeLayout:newLayout};setSettings(next);localStorage.setItem("acc-coaching-settings",JSON.stringify(next))};
   const saveLayout=async()=>{
     const { data: { user }, error: userError } = await sb.auth.getUser();
-    if (userError || !user || !ADMIN_EMAILS.includes(user.email)) { showToast("Invalid admin session — please sign in again", "error"); return; }
+    if (userError || !user || !ADMIN_EMAILS.includes((user.email || "").toLowerCase())) { showToast("Invalid admin session — please sign in again", "error"); return; }
     const s=JSON.parse(localStorage.getItem("acc-coaching-settings")||"{}");
     const ok=await sbSaveContent("settings",s);
     showToast(ok?"Layout saved and synced!":"Error — please sign in again",ok?"success":"error");
